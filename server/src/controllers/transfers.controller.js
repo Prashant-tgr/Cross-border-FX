@@ -35,7 +35,7 @@ export const executeTransfer = async (req, res, next) => {
       routingDecision,
       pricingBreakdown,
       deliveryEstimateHours: deliveryEstimateHours || 24,
-      status: 'PROCESSING',
+      status: 'IN_CLEARING',
     });
 
     // Update supplier total volume

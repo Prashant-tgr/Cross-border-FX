@@ -207,7 +207,7 @@ const seedData = async () => {
           profitSplitTake: 249.5,
         },
         deliveryEstimateHours: 2,
-        status: 'PROCESSING',
+        status: 'IN_CLEARING',
       },
     ]);
 
