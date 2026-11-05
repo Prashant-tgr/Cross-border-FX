@@ -1,0 +1,33 @@
+{
+  "name": "cross-border-fx-root",
+  "version": "1.0.0",
+  "description": "Cross-Border FX Spread & Remittance Router - Full Stack Monorepo Orchestration",
+  "private": true,
+  "scripts": {
+    "install:server": "cd server && npm install",
+    "install:client": "cd client && npm install",
+    "install:all": "npm run install:server && npm run install:client",
+    "build:client": "cd client && npm run build",
+    "build": "npm run build:client",
+    "start:server": "cd server && npm start",
+    "start:client": "cd client && npm start",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "seed": "cd server && npm run seed",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "keywords": [
+    "fx",
+    "remittance",
+    "nextjs",
+    "express",
+    "mongodb",
+    "docker",
+    "deployment"
+  ],
+  "author": "",
+  "license": "ISC"
+}

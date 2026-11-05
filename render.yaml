@@ -1,0 +1,38 @@
+services:
+  # Backend API
+  - type: web
+    name: cross-border-fx-api
+    env: node
+    plan: starter
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: node src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        sync: false
+
+  # Frontend Next.js Client
+  - type: web
+    name: cross-border-fx-client
+    env: node
+    plan: starter
+    rootDir: client
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: cross-border-fx-api
+          property: url
