@@ -483,3 +483,108 @@ export async function fetchAnalytics(): Promise<AnalyticsSummary> {
   }
   return MOCK_ANALYTICS;
 }
+
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    companyName: string;
+    role: string;
+    pricingPlan: string;
+    basisPointSplitRate: number;
+  };
+}
+
+export async function loginApi(email: string, password: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Login failed. Please check credentials.');
+  }
+
+  if (typeof window !== 'undefined' && json.token) {
+    localStorage.setItem('token', json.token);
+  }
+
+  return {
+    token: json.token,
+    user: json.data.user,
+  };
+}
+
+export async function registerApi(payload: {
+  name: string;
+  email: string;
+  password: string;
+  companyName?: string;
+}): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Registration failed.');
+  }
+
+  if (typeof window !== 'undefined' && json.token) {
+    localStorage.setItem('token', json.token);
+  }
+
+  return {
+    token: json.token,
+    user: json.data.user,
+  };
+}
+
+export async function getMeApi(): Promise<AuthResponse['user'] | null> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return null;
+
+    const res = await fetch(`${API_BASE_URL}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      return json.data.user;
+    } else {
+      localStorage.removeItem('token');
+    }
+  } catch {
+    // offline or error
+  }
+  return null;
+}
+
+export async function executeTransferApi(payload: any): Promise<any> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required to execute transfer');
+  }
+
+  const res = await fetch(`${API_BASE_URL}/transfers`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Transfer execution failed.');
+  }
+  return json.data;
+}

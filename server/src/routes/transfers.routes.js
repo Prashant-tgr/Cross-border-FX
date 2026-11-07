@@ -6,12 +6,10 @@ import {
   getTransferById,
   getAnalyticsSummary,
 } from '../controllers/transfers.controller.js';
-import { protect } from '../middleware/auth.js';
+import { protect, optionalProtect } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 
 const router = Router();
-
-router.use(protect);
 
 const executeTransferSchema = z.object({
   body: z.object({
@@ -42,8 +40,8 @@ const executeTransferSchema = z.object({
   }),
 });
 
-router.get('/analytics', getAnalyticsSummary);
-router.route('/').get(getTransfers).post(validate(executeTransferSchema), executeTransfer);
-router.route('/:id').get(getTransferById);
+router.get('/analytics', optionalProtect, getAnalyticsSummary);
+router.route('/').get(protect, getTransfers).post(protect, validate(executeTransferSchema), executeTransfer);
+router.route('/:id').get(protect, getTransferById);
 
 export default router;

@@ -15,12 +15,24 @@ import {
   Send,
   RefreshCw,
   Info,
+  LogIn,
+  LogOut,
+  User as UserIcon,
+  Lock,
+  Mail,
+  X,
+  AlertCircle,
 } from 'lucide-react';
 import {
   fetchCorridors,
   fetchRoutingQuote,
   fetchSuppliers,
   fetchAnalytics,
+  loginApi,
+  registerApi,
+  getMeApi,
+  executeTransferApi,
+  AuthResponse,
 } from '@/lib/api';
 import {
   RateFeedCorridor,
@@ -36,6 +48,17 @@ export default function DashboardPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
 
+  // User & Auth States
+  const [currentUser, setCurrentUser] = useState<AuthResponse['user'] | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authEmail, setAuthEmail] = useState('treasury@globaltrade.io');
+  const [authPassword, setAuthPassword] = useState('Password123!');
+  const [authName, setAuthName] = useState('Elena Rostova');
+  const [authCompanyName, setAuthCompanyName] = useState('Apex Industrial Dynamics Ltd.');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
   // Router Form States
   const [sourceCurrency, setSourceCurrency] = useState('USD');
   const [targetCurrency, setTargetCurrency] = useState('EUR');
@@ -47,11 +70,18 @@ export default function DashboardPage() {
   const [invoiceNumber, setInvoiceNumber] = useState<string>('INV-2026-904');
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionSuccess, setExecutionSuccess] = useState<string | null>(null);
+  const [executionError, setExecutionError] = useState<string | null>(null);
   const [quoteCountdown, setQuoteCountdown] = useState<number>(120);
 
-  // Load initial data
+  // Load initial session and market data
   useEffect(() => {
     async function loadData() {
+      // Check existing user token
+      const user = await getMeApi();
+      if (user) {
+        setCurrentUser(user);
+      }
+
       const [corridorData, supplierData, analyticsData] = await Promise.all([
         fetchCorridors(),
         fetchSuppliers(),
@@ -102,17 +132,124 @@ export default function DashboardPage() {
     setActiveTab('router');
   };
 
-  const handleExecuteTransfer = () => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+
+    try {
+      let res: AuthResponse;
+      if (authMode === 'login') {
+        res = await loginApi(authEmail, authPassword);
+      } else {
+        res = await registerApi({
+          name: authName,
+          email: authEmail,
+          password: authPassword,
+          companyName: authCompanyName,
+        });
+      }
+
+      setCurrentUser(res.user);
+      setIsAuthModalOpen(false);
+
+      // Refresh suppliers and analytics with the authenticated user context
+      const [supplierData, analyticsData] = await Promise.all([fetchSuppliers(), fetchAnalytics()]);
+      setSuppliers(supplierData);
+      setAnalytics(analyticsData);
+      if (supplierData.length > 0 && !selectedSupplierId) {
+        setSelectedSupplierId(supplierData[0]._id);
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Authentication failed');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setAuthEmail('treasury@globaltrade.io');
+    setAuthPassword('Password123!');
+    setAuthLoading(true);
+    setAuthError(null);
+
+    try {
+      const res = await loginApi('treasury@globaltrade.io', 'Password123!');
+      setCurrentUser(res.user);
+      setIsAuthModalOpen(false);
+
+      const [supplierData, analyticsData] = await Promise.all([fetchSuppliers(), fetchAnalytics()]);
+      setSuppliers(supplierData);
+      setAnalytics(analyticsData);
+    } catch (err: any) {
+      setAuthError(err.message || 'Demo login failed');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setCurrentUser(null);
+  };
+
+  const handleExecuteTransfer = async () => {
     if (!selectedRoute) return;
+
+    // If unauthenticated, prompt user to log in first
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      setAuthError('Please sign in or use 1-Click Demo Login to dispatch and record transfers.');
+      return;
+    }
+
     setIsExecuting(true);
-    setTimeout(() => {
-      setIsExecuting(false);
+    setExecutionError(null);
+
+    try {
+      const targetSupplier = suppliers.find((s) => s._id === selectedSupplierId) || suppliers[0];
+
+      await executeTransferApi({
+        supplierId: targetSupplier?._id || 'sup_1',
+        invoiceNumber,
+        sourceCurrency,
+        sourceAmount: amount,
+        targetCurrency,
+        netLandingAmount: selectedRoute.netLandingAmount,
+        routingDecision: {
+          strategy,
+          selectedRailId: selectedRoute.railId,
+          selectedRailName: selectedRoute.name,
+          selectedRailType: selectedRoute.railType,
+        },
+        pricingBreakdown: {
+          midMarketRate: quote?.midMarketRate || 1.0,
+          effectiveRate: selectedRoute.exchangeRate,
+          spreadBps: selectedRoute.spreadBps,
+          fixedFee: selectedRoute.fixedFee,
+          percentageFeeAmount: selectedRoute.percentageFeeAmount,
+          totalFeeSourceCurrency: selectedRoute.totalFees,
+          benchmarkBankCost: selectedRoute.benchmarkBankCost,
+          savedAmountSourceCurrency: selectedRoute.savingsAmount,
+          profitSplitTake: selectedRoute.platformProfitSplit,
+        },
+        deliveryEstimateHours: selectedRoute.estimatedHours,
+      });
+
       setExecutionSuccess(
         `Dispatched ${sourceCurrency} ${amount.toLocaleString()} to ${
-          suppliers.find((s) => s._id === selectedSupplierId)?.supplierName || 'Supplier'
+          targetSupplier?.supplierName || 'Supplier'
         } via ${selectedRoute.name}! Recipient will receive ${targetCurrency} ${selectedRoute.netLandingAmount.toLocaleString()}.`
       );
-    }, 1200);
+
+      // Refresh analytics
+      const updatedAnalytics = await fetchAnalytics();
+      setAnalytics(updatedAnalytics);
+    } catch (err: any) {
+      setExecutionError(err.message || 'Failed to dispatch transfer.');
+    } finally {
+      setIsExecuting(false);
+    }
   };
 
   return (
@@ -135,20 +272,44 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center gap-2 bg-slate-800/80 border border-slate-700/60 rounded-lg px-3 py-1.5 text-xs">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <div className="hidden lg:flex items-center gap-2 bg-slate-800/80 border border-slate-700/60 rounded-lg px-3 py-1.5 text-xs">
               <span className="text-slate-400">Monetization:</span>
               <span className="text-cyan-400 font-semibold">$2,000/mo or 20 bps Profit Split</span>
             </div>
-            <div className="flex items-center gap-2 border-l border-slate-800 pl-4">
-              <div className="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-semibold text-emerald-400 border border-slate-700">
-                AI
+
+            {/* User Profile / Login Toggle */}
+            {currentUser ? (
+              <div className="flex items-center gap-3 border-l border-slate-800 pl-3 sm:pl-4">
+                <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs font-semibold text-emerald-400 border border-emerald-500/30">
+                  <UserIcon className="h-4 w-4" />
+                </div>
+                <div className="text-left hidden sm:block">
+                  <p className="text-xs font-medium text-slate-200">{currentUser.companyName || currentUser.name}</p>
+                  <p className="text-[10px] text-emerald-400 capitalize">{currentUser.role?.replace('_', ' ') || 'Treasury Manager'}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  title="Sign Out"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
               </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-xs font-medium text-slate-200">Apex Industrial</p>
-                <p className="text-[10px] text-slate-400">Treasury Manager</p>
+            ) : (
+              <div className="flex items-center gap-2 border-l border-slate-800 pl-3 sm:pl-4">
+                <span className="text-[11px] text-amber-400/90 hidden sm:inline-block bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                  Guest Preview
+                </span>
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-semibold text-xs transition shadow-sm"
+                >
+                  <LogIn className="h-3.5 w-3.5" />
+                  Sign In
+                </button>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -168,6 +329,7 @@ export default function DashboardPage() {
                 onClick={() => {
                   setActiveTab(tab.id as typeof activeTab);
                   setExecutionSuccess(null);
+                  setExecutionError(null);
                 }}
                 className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
                   isActive
@@ -196,6 +358,23 @@ export default function DashboardPage() {
             <button
               onClick={() => setExecutionSuccess(null)}
               className="text-emerald-400 hover:text-emerald-200 text-xs px-2 py-1"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Banner Alert for Execution Errors */}
+        {executionError && (
+          <div className="p-4 rounded-xl bg-rose-950/70 border border-rose-500/40 text-rose-300 flex items-start gap-3 shadow-lg animate-in fade-in">
+            <AlertCircle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Transfer Execution Notice</p>
+              <p className="text-xs text-rose-400/90 mt-1">{executionError}</p>
+            </div>
+            <button
+              onClick={() => setExecutionError(null)}
+              className="text-rose-400 hover:text-rose-200 text-xs px-2 py-1"
             >
               Dismiss
             </button>
@@ -743,6 +922,147 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {/* AUTHENTICATION & LOGIN MODAL */}
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95">
+            <button
+              onClick={() => setIsAuthModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="h-12 w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/10">
+                <Lock className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white">
+                {authMode === 'login' ? 'Corporate Treasury Login' : 'Register Treasury Account'}
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Access locked quotes, audit reports & commercial remittance execution
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {authError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            {/* 1-Click Demo Login Button */}
+            <div className="mb-5">
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                disabled={authLoading}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20 hover:from-emerald-500/30 hover:to-cyan-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2 transition shadow-sm"
+              >
+                <Sparkles className="h-4 w-4 text-emerald-400" />
+                1-Click Demo Login (Pre-filled Admin)
+              </button>
+              <p className="text-[10px] text-center text-slate-500 mt-1.5">
+                Logs in as <code>treasury@globaltrade.io</code>
+              </p>
+            </div>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-800" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-slate-900 px-2 text-slate-500">or enter credentials</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleAuthSubmit} className="space-y-4 text-xs">
+              {authMode === 'register' && (
+                <>
+                  <div>
+                    <label className="block font-medium text-slate-300 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      placeholder="e.g. Elena Rostova"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-medium text-slate-300 mb-1">Company / Organization</label>
+                    <input
+                      type="text"
+                      required
+                      value={authCompanyName}
+                      onChange={(e) => setAuthCompanyName(e.target.value)}
+                      placeholder="e.g. Apex Industrial Dynamics"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block font-medium text-slate-300 mb-1">Corporate Email</label>
+                <div className="relative">
+                  <Mail className="h-4 w-4 text-slate-500 absolute left-3 top-2.5" />
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="treasury@globaltrade.io"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-medium text-slate-300 mb-1">Password</label>
+                <div className="relative">
+                  <Lock className="h-4 w-4 text-slate-500 absolute left-3 top-2.5" />
+                  <input
+                    type="password"
+                    required
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-semibold text-slate-950 text-xs transition shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+              >
+                {authLoading ? 'Verifying...' : authMode === 'login' ? 'Sign In to Treasury' : 'Create Account'}
+              </button>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode(authMode === 'login' ? 'register' : 'login');
+                    setAuthError(null);
+                  }}
+                  className="text-xs text-slate-400 hover:text-emerald-400 transition"
+                >
+                  {authMode === 'login'
+                    ? "Don't have an enterprise account? Register"
+                    : 'Already registered? Sign in'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-slate-800/80 bg-slate-950 py-6 text-center text-xs text-slate-500">

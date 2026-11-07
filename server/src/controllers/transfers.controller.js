@@ -101,7 +101,8 @@ export const getTransferById = async (req, res, next) => {
 
 export const getAnalyticsSummary = async (req, res, next) => {
   try {
-    const transfers = await Transfer.find({ userId: req.user._id });
+    const filter = req.user ? { userId: req.user._id } : {};
+    const transfers = await Transfer.find(filter);
 
     const totalTransfers = transfers.length;
     let totalVolumeUSD = 0;
@@ -140,7 +141,7 @@ export const getAnalyticsSummary = async (req, res, next) => {
         averageSavingsPercentage:
           totalBenchmarkCost > 0 ? Number(((totalClientSavings / totalBenchmarkCost) * 100).toFixed(1)) : 0,
         monetization: {
-          currentPlan: req.user.pricingPlan,
+          currentPlan: req.user?.pricingPlan || 'basis_point_split',
           retainerMonthly: 2000,
           totalProfitSplitEarned: Number(totalPlatformProfitSplit.toFixed(2)),
         },

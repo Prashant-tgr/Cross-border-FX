@@ -7,12 +7,10 @@ import {
   updateSupplier,
   deleteSupplier,
 } from '../controllers/suppliers.controller.js';
-import { protect } from '../middleware/auth.js';
+import { protect, optionalProtect } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 
 const router = Router();
-
-router.use(protect);
 
 const supplierSchema = z.object({
   body: z.object({
@@ -30,7 +28,7 @@ const supplierSchema = z.object({
   }),
 });
 
-router.route('/').get(getSuppliers).post(validate(supplierSchema), createSupplier);
-router.route('/:id').get(getSupplierById).put(updateSupplier).delete(deleteSupplier);
+router.route('/').get(optionalProtect, getSuppliers).post(protect, validate(supplierSchema), createSupplier);
+router.route('/:id').get(protect, getSupplierById).put(protect, updateSupplier).delete(protect, deleteSupplier);
 
 export default router;

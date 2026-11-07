@@ -3,7 +3,11 @@ import { AppError } from '../middleware/error.js';
 
 export const getSuppliers = async (req, res, next) => {
   try {
-    const suppliers = await Supplier.find({ userId: req.user._id, isActive: true }).sort({ createdAt: -1 });
+    const filter = { isActive: true };
+    if (req.user) {
+      filter.userId = req.user._id;
+    }
+    const suppliers = await Supplier.find(filter).sort({ createdAt: -1 });
 
     res.status(200).json({
       status: 'success',

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cross-Border FX Spread & Remittance Router - 12-Page Business Deck</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #070D1E;
+      color: #F8FAFC;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .slide {
+      display: none;
+      min-height: 85vh;
+    }
+    .slide.active {
+      display: flex;
+      flex-direction: column;
+      animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.99); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @media print {
+      body { background-color: white; color: black; }
+      .no-print { display: none !important; }
+      .slide { display: flex !important; page-break-after: always; min-height: 100vh; }
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+  <!-- Top Navigation & Controls -->
+  <header class="no-print border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center font-bold text-slate-950 text-base shadow-lg shadow-emerald-500/20">
+        FX
+      </div>
+      <div>
+        <h1 class="text-sm font-bold tracking-tight text-white flex items-center gap-2">
+          Cross-Border FX Spread & Remittance Router
+          <span class="text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+            12-Page Deck
+          </span>
+        </h1>
+        <p class="text-[11px] text-slate-400">Institutional Business & Investor Pitch Deck</p>
+      </div>
+    </div>
+
+    <!-- Slide Controller Buttons -->
+    <div class="flex items-center gap-3">
+      <span class="text-xs font-mono text-slate-400 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+        Slide <span id="currentSlideNum" class="text-emerald-400 font-bold">1</span> / 12
+      </span>
+      <button onclick="prevSlide()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition">
+        ← Prev
+      </button>
+      <button onclick="nextSlide()" class="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-500/20">
+        Next →
+      </button>
+      <button onclick="window.print()" class="hidden sm:inline-flex p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium transition">
+        Print / PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- Presentation Viewport -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-6 md:p-10 flex flex-col justify-center">
+
+    <!-- SLIDE 1: TITLE SLIDE -->
+    <div class="slide active justify-center items-center text-center py-12" data-slide="1">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold mb-6">
+        SERIES A / EXECUTIVE BUSINESS DECK
+      </div>
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight max-w-4xl">
+        Cross-Border FX Spread & <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">Remittance Router</span>
+      </h1>
+      <p class="mt-6 text-base sm:text-lg text-slate-400 max-w-3xl leading-relaxed">
+        Tracks real-time spreads across SWIFT, local rails, and fintech partners, dynamically routing international commercial supplier transfers for optimal rates.
+      </p>
+
+      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl w-full text-left">
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <p class="text-xs text-slate-400">Enterprise Pricing Model</p>
+          <p class="text-emerald-400 font-bold text-sm mt-1">$2,000/mo Retainer OR Bps Profit Split</p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+          <p class="text-xs text-slate-400">Execution Velocity</p>
+          <p class="text-cyan-400 font-bold text-sm mt-1">Sub-120 Min vs 48-72h SWIFT</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: EXECUTIVE SUMMARY -->
+    <div class="slide py-6" data-slide="2">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 02 • EXECUTIVE SUMMARY</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">The Cross-Border Treasury Inefficiency Thesis</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
+        <div class="p-6 rounded-2xl bg-slate-900/80 border border-rose-500/30 flex flex-col justify-between">
+          <div>
+            <div class="text-rose-400 font-bold text-xs uppercase tracking-wider mb-2">01. The Problem</div>
+            <h3 class="text-lg font-bold text-white mb-3">Predatory 290 bps Markups</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Commercial enterprises lose 2.2% to 2.9% on international SWIFT supplier payouts due to hidden currency spreads and unpredictable intermediary lifting fees ($40-$60 per wire).
+            </p>
+          </div>
+          <div class="mt-4 pt-4 border-t border-slate-800 text-[11px] text-rose-300/80 font-mono">
+            Annual Loss: $25k+ per $1M volume
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900/80 border border-emerald-500/30 flex flex-col justify-between">
+          <div>
+            <div class="text-emerald-400 font-bold text-xs uppercase tracking-wider mb-2">02. The Solution</div>
+            <h3 class="text-lg font-bold text-white mb-3">Smart Multi-Rail Router</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Programmatic algorithm continuously scanning SWIFT, Domestic Clearing (SEPA, ACH, Pix, NEFT), and Fintech Partners (Airwallex, Wise, Nium) to guarantee the highest net landed payout.
+            </p>
+          </div>
+          <div class="mt-4 pt-4 border-t border-slate-800 text-[11px] text-emerald-300/80 font-mono">
+            Direct Fee Reduction: Up to 95.3%
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900/80 border border-cyan-500/30 flex flex-col justify-between">
+          <div>
+            <div class="text-cyan-400 font-bold text-xs uppercase tracking-wider mb-2">03. The Business Model</div>
+            <h3 class="text-lg font-bold text-white mb-3">Aligned Monetization</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              $2,000/mo flat SaaS retainer OR a 20-30 bps profit split of audited customer savings. Software-orchestrated infrastructure with zero balance-sheet or credit risk.
+            </p>
+          </div>
+          <div class="mt-4 pt-4 border-t border-slate-800 text-[11px] text-cyan-300/80 font-mono">
+            85%+ Software Gross Margins
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: THE PROBLEM -->
+    <div class="slide py-6" data-slide="3">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 03 • MARKET FRICTION</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">The $150B Hidden FX Tax on Global Enterprises</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <span class="text-rose-400">✕</span> The Broken Correspondent Banking Model
+          </h3>
+          <div class="space-y-3 text-xs text-slate-300">
+            <p><strong class="text-white">1. Hidden FX Spread Markups:</strong> Banks claim low wire fees while padding 220 to 290 bps on currency conversions above interbank mid-market rates.</p>
+            <p><strong class="text-white">2. Intermediary Deductions:</strong> 2 to 4 intermediary banks shave off lifting charges, leaving suppliers underpaid and prompting invoice disputes.</p>
+            <p><strong class="text-white">3. Trapped Working Capital:</strong> 3 to 5 business day delays force CFOs to hold millions in non-productive regional cash buffers.</p>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-amber-500/30 space-y-3 font-mono text-xs">
+          <div class="text-amber-400 font-bold text-sm font-sans">The Math: $100,000 USD to EUR Wire</div>
+          <div class="p-3 bg-slate-950 rounded-xl space-y-1">
+            <div class="text-slate-400">Pure Interbank Mid-Market (0.9242): <span class="text-white">€92,420</span></div>
+            <div class="text-rose-400">Bank SWIFT Rate (0.9001 - 260 bps): <span class="text-rose-300">€89,985</span></div>
+            <div class="text-rose-400">Bank Wire & Intermediary Fees: <span class="text-rose-300">-$70.00</span></div>
+            <div class="text-rose-400 font-bold">TOTAL CAPITAL DRAINED BY BANK: $2,630 USD</div>
+          </div>
+          <div class="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl space-y-1">
+            <div class="text-emerald-400">Router SEPA/Partner Rate (0.9216): <span class="text-emerald-300">€92,157</span></div>
+            <div class="text-emerald-400">Router Direct Rail Fee: <span class="text-emerald-300">-$3.00</span></div>
+            <div class="text-emerald-400 font-bold">AUDITED VALUE SAVED: +$2,350+ (95% savings)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: THE SOLUTION -->
+    <div class="slide py-6" data-slide="4">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 04 • PLATFORM SOLUTION</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">The Dynamic Multi-Rail Remittance Router</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 flex-1">
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-cyan-400 font-bold text-xs uppercase mb-1">Feature 01</div>
+          <h3 class="text-base font-bold text-white mb-2">Real-Time Spread Aggregator</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Micro-polling engine scanning bid-ask spreads across SWIFT, local rails (ACH, SEPA, Faster Payments, Pix, NEFT), and fintech liquidity partners (Wise, Airwallex, Nium).
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-emerald-400 font-bold text-xs uppercase mb-1">Feature 02</div>
+          <h3 class="text-base font-bold text-white mb-2">Dynamic Optimization Algorithm</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Multi-factor execution solver evaluating 4 corporate priorities: Lowest Cost (Max Net Landed), Instant Rails (Sub-hour SLA), Max Reliability (Tier-1), or Balanced Blend.
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-amber-400 font-bold text-xs uppercase mb-1">Feature 03</div>
+          <h3 class="text-base font-bold text-white mb-2">Supplier Account & Rail Mapping</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Automated parsing of international bank details (IBAN, SWIFT, IFSC, Sort Codes) directly matching foreign beneficiaries to local domestic clearing rails.
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-purple-400 font-bold text-xs uppercase mb-1">Feature 04</div>
+          <h3 class="text-base font-bold text-white mb-2">120-Second Slippage Shield</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Guaranteed locked exchange rates preventing intraday volatility and ensuring recipient suppliers receive 100% of the invoiced commercial amount.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: MARKET OPPORTUNITY -->
+    <div class="slide py-6" data-slide="5">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 05 • MARKET SIZING</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">The $40 Trillion B2B Cross-Border Wave</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="p-6 rounded-2xl bg-slate-900 border border-cyan-500/30">
+          <div class="text-xs text-cyan-400 font-bold uppercase">Total Addressable Market</div>
+          <div class="text-3xl font-extrabold text-white mt-1">$40 Trillion</div>
+          <p class="text-xs text-slate-400 mt-2">Global B2B cross-border payment volume by 2027 (McKinsey Global Payments Report).</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-slate-900 border border-emerald-500/30">
+          <div class="text-xs text-emerald-400 font-bold uppercase">Serviceable Addressable Market</div>
+          <div class="text-3xl font-extrabold text-white mt-1">$8.5 Trillion</div>
+          <p class="text-xs text-slate-400 mt-2">Mid-market manufacturing, tech supply chains, and global logistics needing treasury automation.</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-slate-900 border border-amber-500/30">
+          <div class="text-xs text-amber-400 font-bold uppercase">Serviceable Obtainable Market</div>
+          <div class="text-3xl font-extrabold text-white mt-1">$350 Billion</div>
+          <p class="text-xs text-slate-400 mt-2">High-frequency commercial payables in US-EU, US-APAC, and EU-LATAM trade corridors.</p>
+        </div>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-300 space-y-2">
+        <div class="font-bold text-white text-sm">Regulatory & Infrastructure Tailwinds:</div>
+        <p>• <strong>Global Instant Rails:</strong> EU SEPA Instant mandate, US FedNow, and Brazil Pix opening direct domestic clearing to fintechs.</p>
+        <p>• <strong>ISO 20022 Adoption:</strong> Standardized payment telemetry enables automated cross-rail translation without data loss.</p>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: PRODUCT ARCHITECTURE -->
+    <div class="slide py-6" data-slide="6">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 06 • ARCHITECTURE</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">Enterprise-Ready Full-Stack Engineering</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 flex-1">
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-xs text-cyan-400 font-bold uppercase mb-1">Frontend Engineering</div>
+          <h3 class="text-base font-bold text-white mb-2">Next.js App Router & Tailwind</h3>
+          <p class="text-xs text-slate-400">
+            High-performance React Server Components, responsive financial dashboards, dynamic comparator modals, and standalone Docker compilation (120MB).
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-xs text-emerald-400 font-bold uppercase mb-1">Backend Core</div>
+          <h3 class="text-base font-bold text-white mb-2">Node.js & Express.js</h3>
+          <p class="text-xs text-slate-400">
+            Clean domain architecture (Services, Controllers, Models, Routes), rate limiting, HTTP gzip compression, reverse proxy trust, and graceful shutdown.
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-xs text-amber-400 font-bold uppercase mb-1">Data Modeling</div>
+          <h3 class="text-base font-bold text-white mb-2">MongoDB & Mongoose Schemas</h3>
+          <p class="text-xs text-slate-400">
+            High-throughput rate feeds, supplier accounts, transfer records, and real-time audit logs with strict Zod validation.
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-xs text-purple-400 font-bold uppercase mb-1">DevOps & Cloud</div>
+          <h3 class="text-base font-bold text-white mb-2">Docker Compose & GitHub CI/CD</h3>
+          <p class="text-xs text-slate-400">
+            One-click Docker Compose (Mongo + API + Web), automated GitHub Actions pipeline, and Render/Railway blueprints.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: SPREAD ECONOMICS -->
+    <div class="slide py-6" data-slide="7">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 07 • COST BENCHMARK</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">Multi-Rail Spread Economics & Arbitrage</h2>
+      <div class="overflow-x-auto bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs font-mono">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="text-slate-400 border-b border-slate-800">
+              <th class="py-2.5">Execution Rail</th>
+              <th class="py-2.5">Spread (bps)</th>
+              <th class="py-2.5">Fixed Fee</th>
+              <th class="py-2.5">Lifting Fee</th>
+              <th class="py-2.5">Settlement SLA</th>
+              <th class="py-2.5">Reliability</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60">
+            <tr>
+              <td class="py-3 text-rose-400 font-bold">Traditional SWIFT Bank</td>
+              <td class="text-rose-400">220 - 290 bps</td>
+              <td>$45.00</td>
+              <td class="text-rose-400">$20 - $45</td>
+              <td>48 - 72+ hours</td>
+              <td>Variable</td>
+            </tr>
+            <tr>
+              <td class="py-3 text-cyan-400 font-bold">Local Domestic Clearing</td>
+              <td class="text-cyan-400">40 - 50 bps</td>
+              <td>$4.50</td>
+              <td class="text-emerald-400">$0.00</td>
+              <td>1 - 2 hours</td>
+              <td>99.1%</td>
+            </tr>
+            <tr>
+              <td class="py-3 text-emerald-400 font-bold">Fintech Partner Rails</td>
+              <td class="text-emerald-400">28 - 35 bps</td>
+              <td>$2.50 - $3.50</td>
+              <td class="text-emerald-400">$0.00</td>
+              <td>2 - 4 hours</td>
+              <td>99.8%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-4 p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300">
+        <strong>Real-World $150k Payment:</strong> Traditional Bank Wire charges $3,945 in total drag (Net landed: €134,850). Our Router charges $183 (Net landed: €138,350) saving <strong>$3,762 (95.3% savings)</strong> on a single wire.
+      </div>
+    </div>
+
+    <!-- SLIDE 8: BUSINESS MODEL -->
+    <div class="slide py-6" data-slide="8">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 08 • REVENUE STREAMS</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">Business Model: $2,000/mo Retainer or Bps Split</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+        <div class="p-6 rounded-2xl bg-slate-900 border border-cyan-500/30 flex flex-col justify-between">
+          <div>
+            <div class="text-xs text-cyan-400 font-bold uppercase mb-1">Option A • High-Volume Tier</div>
+            <h3 class="text-xl font-bold text-white mb-2">$2,000/mo Enterprise Retainer</h3>
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+              Designed for enterprises routing &gt; $1M/month. Flat $24,000 ACV giving unlimited intelligent routing.
+            </p>
+            <div class="space-y-2 text-xs text-slate-300">
+              <p>• 100% of FX spread savings retained by customer</p>
+              <p>• Predictable software OPEX budgeting</p>
+              <p>• Break-even on the first $100k wire of each month</p>
+            </div>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 text-xs font-mono text-cyan-300">
+            Target: 40% of customer base
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-emerald-500/30 flex flex-col justify-between">
+          <div>
+            <div class="text-xs text-emerald-400 font-bold uppercase mb-1">Option B • Zero-Risk Tier</div>
+            <h3 class="text-xl font-bold text-white mb-2">Basis Point (bps) Profit Split</h3>
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+              Zero upfront fees. Platform retains 20% to 30% of audited savings against traditional commercial bank benchmarks.
+            </p>
+            <div class="space-y-2 text-xs text-slate-300">
+              <p>• Zero board budget approval needed to onboard</p>
+              <p>• Complete alignment: we only earn when client saves</p>
+              <p>• Generates $4,800/mo per $1M routed volume</p>
+            </div>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 text-xs font-mono text-emerald-300">
+            Target: 60% of customer base
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: GO-TO-MARKET -->
+    <div class="slide py-6" data-slide="9">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 09 • DISTRIBUTION</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">Go-To-Market (GTM): Viral Distribution Engine</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 flex-1">
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-cyan-400 font-bold text-xs uppercase mb-1">Channel 01</div>
+          <h3 class="text-base font-bold text-white mb-2">Direct CFO Outbound ("SWIFT Audit")</h3>
+          <p class="text-xs text-slate-400">
+            Pitch: "Send us your last three bank wire confirmations. Our automated audit will prove where you leaked $40,000+ in hidden margins this quarter."
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-emerald-400 font-bold text-xs uppercase mb-1">Channel 02</div>
+          <h3 class="text-base font-bold text-white mb-2">ERP & Accounts Payable Connectors</h3>
+          <p class="text-xs text-slate-400">
+            Turnkey plugins for NetSuite, SAP, Xero, and QuickBooks enabling one-click route optimization within existing AP invoice workflows.
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-amber-400 font-bold text-xs uppercase mb-1">Channel 03</div>
+          <h3 class="text-base font-bold text-white mb-2">Supplier Virality Network Loop</h3>
+          <p class="text-xs text-slate-400">
+            When foreign suppliers receive exact un-deducted payments in 90 minutes, they demand that other multinational buyers use our Router.
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-purple-400 font-bold text-xs uppercase mb-1">Channel 04</div>
+          <h3 class="text-base font-bold text-white mb-2">B2B Procurement & Card Partnerships</h3>
+          <p class="text-xs text-slate-400">
+            Embedded integration with corporate spend platforms and trade finance lenders seeking transparent cross-border settlement.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: COMPETITIVE LANDSCAPE -->
+    <div class="slide py-6" data-slide="10">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 10 • COMPETITIVE MOATS</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">Competitive Matrix & Unfair Advantages</h2>
+      <div class="overflow-x-auto bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs font-mono mb-5">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="text-slate-400 border-b border-slate-800">
+              <th class="py-2">Solution</th>
+              <th class="py-2">Spread Arbitrage</th>
+              <th class="py-2">Sub-Hour Rails</th>
+              <th class="py-2">Multi-Rail Redundancy</th>
+              <th class="py-2">Aligned Pricing</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60">
+            <tr>
+              <td class="py-2.5 text-slate-300">Commercial Banks</td>
+              <td class="text-rose-400">✕ No (220-290 bps)</td>
+              <td class="text-rose-400">✕ No (2-5 days)</td>
+              <td class="text-rose-400">✕ SWIFT Only</td>
+              <td class="text-rose-400">✕ Opaque</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 text-slate-300">Single Fintech Rails</td>
+              <td class="text-amber-400">⚠️ Partial</td>
+              <td class="text-emerald-400">✓ Yes</td>
+              <td class="text-rose-400">✕ Single Point</td>
+              <td class="text-rose-400">✕ Fixed Markup</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 text-slate-300">Legacy TMS (Kyriba)</td>
+              <td class="text-rose-400">✕ Monitor Only</td>
+              <td class="text-rose-400">✕ No Routing</td>
+              <td class="text-rose-400">✕ Manual</td>
+              <td class="text-rose-400">✕ $100k+ Setup</td>
+            </tr>
+            <tr class="bg-emerald-950/20 font-bold">
+              <td class="py-2.5 text-emerald-400">Our Remittance Router</td>
+              <td class="text-emerald-400">✓ Dynamic Real-Time</td>
+              <td class="text-emerald-400">✓ Domestic Clearing</td>
+              <td class="text-emerald-400">✓ Multi-Partner</td>
+              <td class="text-emerald-400">✓ $2k or 20 bps</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-slate-300">
+        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+          <strong class="text-white block mb-1">1. Rail-Agnostic Arbitrage:</strong> We are not locked into one banking partner; we dynamically route to the lowest spread.
+        </div>
+        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+          <strong class="text-white block mb-1">2. Zero Balance Sheet Risk:</strong> Software-only layer avoiding balance sheet capital requirements.
+        </div>
+        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+          <strong class="text-white block mb-1">3. Automated Failover:</strong> Instant dynamic re-routing if a specific clearing rail experiences latency.
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: FINANCIAL PROJECTIONS -->
+    <div class="slide py-6" data-slide="11">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 11 • FINANCIAL TRAJECTORY</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">Financial Projections & Unit Economics</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="text-xs text-slate-400 font-bold uppercase">Year 1 • Foundation</div>
+          <div class="text-2xl font-bold text-white mt-1">$960,000 ARR</div>
+          <div class="mt-3 space-y-1 text-xs text-slate-400 font-mono">
+            <div>Active Clients: 25</div>
+            <div>Volume: $60M</div>
+            <div>Gross Margin: 82%</div>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-emerald-500/40">
+          <div class="text-xs text-emerald-400 font-bold uppercase">Year 2 • Scale</div>
+          <div class="text-2xl font-bold text-emerald-400 mt-1">$4,800,000 ARR</div>
+          <div class="mt-3 space-y-1 text-xs text-slate-400 font-mono">
+            <div>Active Clients: 120</div>
+            <div>Volume: $360M</div>
+            <div>Gross Margin: 86%</div>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-cyan-500/40">
+          <div class="text-xs text-cyan-400 font-bold uppercase">Year 3 • Market Leader</div>
+          <div class="text-2xl font-bold text-cyan-400 mt-1">$19,250,000 ARR</div>
+          <div class="mt-3 space-y-1 text-xs text-slate-400 font-mono">
+            <div>Active Clients: 450</div>
+            <div>Volume: $1.65B</div>
+            <div>Gross Margin: 89%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+        <div><span class="text-slate-400 block">CAC</span><strong class="text-white text-sm">$4,200</strong></div>
+        <div><span class="text-slate-400 block">LTV</span><strong class="text-emerald-400 text-sm">$58,000</strong></div>
+        <div><span class="text-slate-400 block">LTV:CAC</span><strong class="text-cyan-400 text-sm">13.8x</strong></div>
+        <div><span class="text-slate-400 block">NRR</span><strong class="text-emerald-400 text-sm">128%</strong></div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: ROADMAP & THE ASK -->
+    <div class="slide py-6" data-slide="12">
+      <div class="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-1">PAGE 12 • EXECUTION & CAPITAL</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6">Roadmap & Seed / Series A Ask ($2.5M)</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <h3 class="text-base font-bold text-white">12-Month Execution Roadmap</h3>
+          <div class="space-y-3 text-xs text-slate-300">
+            <p><strong class="text-cyan-400">Q1 2026:</strong> Deploy standalone production clusters; onboard initial 25 commercial enterprises ($60M run-rate volume).</p>
+            <p><strong class="text-emerald-400">Q2 2026:</strong> Launch native ERP two-way connectors for NetSuite, SAP, and QuickBooks.</p>
+            <p><strong class="text-amber-400">Q3 2026:</strong> Expand direct clearing into Brazil (Pix), India (UPI), and Singapore (PayNow).</p>
+            <p><strong class="text-purple-400">Q4 2026:</strong> Deploy AI liquidity netting to eliminate intra-company currency churn.</p>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-emerald-500/30 flex flex-col justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white mb-3">The Investment Ask: $2,500,000</h3>
+            <div class="space-y-2 text-xs text-slate-300">
+              <p>• <strong>45% ($1.125M) Core Infrastructure:</strong> Expanding connectivity to 40+ national clearing networks and security audits.</p>
+              <p>• <strong>35% ($875k) Enterprise Sales:</strong> Outbound enterprise SDR/AE team targeting mid-market CFOs.</p>
+              <p>• <strong>20% ($500k) Compliance & Legal:</strong> Cross-border compliance licensing and SOC2 Type II certification.</p>
+            </div>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 text-xs font-mono text-slate-400">
+            Contact: <span class="text-emerald-400">treasury@globaltrade.io</span> • <span class="text-cyan-400">www.crossborderfx.io</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 12;
+
+    function showSlide(n) {
+      const slides = document.querySelectorAll('.slide');
+      slides.forEach((s) => s.classList.remove('active'));
+      const target = document.querySelector(`.slide[data-slide="${n}"]`);
+      if (target) {
+        target.classList.add('active');
+        document.getElementById('currentSlideNum').textContent = n;
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        showSlide(currentSlide);
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        showSlide(currentSlide);
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        prevSlide();
+      }
+    });
+  </script>
+</body>
+</html>

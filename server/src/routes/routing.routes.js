@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { getRoutingQuote } from '../controllers/routing.controller.js';
-import { protect } from '../middleware/auth.js';
+import { optionalProtect } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 
 const router = Router();
@@ -15,6 +15,6 @@ const quoteSchema = z.object({
   }),
 });
 
-router.post('/optimize', protect, validate(quoteSchema), getRoutingQuote);
+router.post('/optimize', optionalProtect, validate(quoteSchema), getRoutingQuote);
 
 export default router;
