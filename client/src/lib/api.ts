@@ -659,35 +659,37 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
 ];
 
 export async function fetchAdminOverview(): Promise<AdminOverview> {
-  try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const res = await fetch(`${API_BASE_URL}/admin/overview`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (res.ok) {
-      const json = await res.json();
-      return json.data;
-    }
-  } catch {
-    // fallback
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required: Admin token missing.');
   }
-  return MOCK_ADMIN_OVERVIEW;
+
+  const res = await fetch(`${API_BASE_URL}/admin/overview`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Access Denied: Requires Administrator Privileges.');
+  }
+  return json.data;
 }
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {
-  try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const res = await fetch(`${API_BASE_URL}/admin/users`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (res.ok) {
-      const json = await res.json();
-      return json.data;
-    }
-  } catch {
-    // fallback
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    throw new Error('Authentication required: Admin token missing.');
   }
-  return MOCK_ADMIN_USERS;
+
+  const res = await fetch(`${API_BASE_URL}/admin/users`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Access Denied: Requires Administrator Privileges.');
+  }
+  return json.data;
 }
 
 export async function updateAdminUserPlan(

@@ -123,13 +123,14 @@ app.use(errorHandler);
 const ensureInitialData = async () => {
   try {
     // 1. Ensure Super Admin Account
-    const adminExists = await User.findOne({ email: 'admin@globaltrade.io' });
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@globaltrade.io';
+    const adminExists = await User.findOne({ email: adminEmail });
     if (!adminExists) {
-      console.log('[Auto-Seed] Provisioning Super Admin account (admin@globaltrade.io)...');
+      console.log(`[Auto-Seed] Provisioning Super Admin account (${adminEmail})...`);
       await User.create({
         name: 'Alexander Vance',
-        email: 'admin@globaltrade.io',
-        password: 'Password123!',
+        email: adminEmail,
+        password: process.env.ADMIN_PASSWORD || 'Password123!',
         companyName: 'Global FX Router Operations',
         role: 'admin',
         pricingPlan: 'fixed_retainer',

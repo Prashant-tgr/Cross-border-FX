@@ -67,10 +67,10 @@ export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<AuthResponse['user'] | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [authEmail, setAuthEmail] = useState('treasury@globaltrade.io');
-  const [authPassword, setAuthPassword] = useState('Password123!');
-  const [authName, setAuthName] = useState('Elena Rostova');
-  const [authCompanyName, setAuthCompanyName] = useState('Apex Industrial Dynamics Ltd.');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [authCompanyName, setAuthCompanyName] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -137,13 +137,17 @@ export default function DashboardPage() {
     }
   }, [selectedAdminCorridor, corridors]);
 
-  // Load admin data when admin tab is activated
+  // Load admin data when admin tab is activated (only for authenticated admin role)
   useEffect(() => {
-    if (activeTab === 'admin') {
+    if (activeTab === 'admin' && currentUser?.role === 'admin') {
       async function loadAdminData() {
-        const [overview, users] = await Promise.all([fetchAdminOverview(), fetchAdminUsers()]);
-        setAdminOverview(overview);
-        setAdminUsers(users);
+        try {
+          const [overview, users] = await Promise.all([fetchAdminOverview(), fetchAdminUsers()]);
+          setAdminOverview(overview);
+          setAdminUsers(users);
+        } catch (err: any) {
+          console.error('Failed to load admin data:', err);
+        }
       }
       loadAdminData();
     }
@@ -218,8 +222,8 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDemoLogin = async (role: 'treasury' | 'admin') => {
-    const email = role === 'admin' ? 'admin@globaltrade.io' : 'treasury@globaltrade.io';
+  const handleDemoLogin = async () => {
+    const email = 'treasury@globaltrade.io';
     const pwd = 'Password123!';
     setAuthEmail(email);
     setAuthPassword(pwd);
@@ -234,10 +238,6 @@ export default function DashboardPage() {
       const [supplierData, analyticsData] = await Promise.all([fetchSuppliers(), fetchAnalytics()]);
       setSuppliers(supplierData);
       setAnalytics(analyticsData);
-
-      if (role === 'admin') {
-        setActiveTab('admin');
-      }
     } catch (err: any) {
       setAuthError(err.message || 'Demo login failed');
     } finally {
@@ -454,7 +454,9 @@ export default function DashboardPage() {
             { id: 'spreads', label: 'Multi-Rail Spread Matrix', icon: TrendingDown },
             { id: 'suppliers', label: 'Commercial Suppliers', icon: Building2 },
             { id: 'analytics', label: 'Savings & Profit Split Audit', icon: DollarSign },
-            { id: 'admin', label: 'Admin Control Center', icon: Sliders, isSpecial: true },
+            ...(currentUser?.role === 'admin'
+              ? [{ id: 'admin', label: 'Admin Control Center', icon: Sliders, isSpecial: true }]
+              : []),
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1066,9 +1068,43 @@ export default function DashboardPage() {
         )}
 
         {/* TAB 5: ADMIN CONTROL CENTER */}
-        {activeTab === 'admin' && (
+        {activeTab === 'admin' && currentUser?.role !== 'admin' && (
+          <div className="max-w-2xl mx-auto my-12 p-8 rounded-2xl bg-slate-900 border border-rose-500/30 text-center space-y-4 shadow-2xl animate-in fade-in">
+            <div className="h-16 w-16 mx-auto rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+              <ShieldAlert className="h-8 w-8" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">403 Forbidden • Access Denied</h2>
+              <p className="text-sm text-slate-400 mt-2">
+                The Admin Control Center is restricted to authorized platform operators with role <span className="font-mono text-rose-400">admin</span>. 
+                Guests and standard corporate treasury accounts cannot view or modify liquidity rails, profit splits, or user databases.
+              </p>
+            </div>
+            <div className="pt-2 flex justify-center gap-3">
+              <button
+                onClick={() => setActiveTab('router')}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
+              >
+                Return to Remittance Router
+              </button>
+              <button
+                onClick={() => {
+                  setAuthEmail('');
+                  setAuthPassword('');
+                  setIsAuthModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition shadow-md shadow-purple-600/30 flex items-center gap-1.5"
+              >
+                <Lock className="h-3.5 w-3.5" />
+                Sign In with Admin Account
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'admin' && currentUser?.role === 'admin' && (
           <div className="space-y-8 animate-in fade-in">
-            {/* Admin Header & Unlock Notice if not super admin */}
+            {/* Admin Header */}
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-gradient-to-r from-purple-950/40 via-slate-900 to-slate-900 p-6 rounded-2xl border border-purple-500/30">
               <div>
                 <div className="flex items-center gap-2">
@@ -1079,16 +1115,6 @@ export default function DashboardPage() {
                 </div>
                 <h2 className="text-xl font-bold text-white mt-1">Platform Control & Liquidity Tuner</h2>
               </div>
-
-              {currentUser?.role !== 'admin' && (
-                <button
-                  onClick={() => handleDemoLogin('admin')}
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition shadow-lg shadow-purple-600/30 flex items-center gap-2"
-                >
-                  <ShieldAlert className="h-4 w-4" />
-                  1-Click Super Admin Login (admin@globaltrade.io)
-                </button>
-              )}
             </div>
 
             {/* Platform Revenue & Global Statistics */}
@@ -1449,27 +1475,20 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* 1-Click Demo Buttons */}
-            <div className="mb-5 space-y-2">
+            {/* Demo Sandbox Quick-Tour */}
+            <div className="mb-5">
               <button
                 type="button"
-                onClick={() => handleDemoLogin('treasury')}
+                onClick={() => handleDemoLogin()}
                 disabled={authLoading}
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20 hover:from-emerald-500/30 hover:to-cyan-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2 transition shadow-sm"
               >
                 <Sparkles className="h-4 w-4 text-emerald-400" />
-                1-Click Treasury Manager Login (Elena Rostova)
+                1-Click Client Sandbox Login (Elena Rostova - Corporate Treasury)
               </button>
-
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('admin')}
-                disabled={authLoading}
-                className="w-full py-2 px-4 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-xs font-semibold flex items-center justify-center gap-2 transition"
-              >
-                <ShieldAlert className="h-4 w-4 text-purple-400" />
-                1-Click Super Admin Login (Alexander Vance)
-              </button>
+              <p className="text-[10px] text-slate-500 text-center mt-1.5">
+                Note: Super Administrator privileges require manual authentication with verified admin credentials below.
+              </p>
             </div>
 
             <div className="relative my-4">
