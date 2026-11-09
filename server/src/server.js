@@ -122,9 +122,26 @@ app.use(errorHandler);
 // Automatic DB self-seeding on fresh deployment if empty
 const ensureInitialData = async () => {
   try {
-    const userCount = await User.countDocuments();
-    if (userCount === 0) {
-      console.log('[Auto-Seed] Initializing default treasury administrator...');
+    // 1. Ensure Super Admin Account
+    const adminExists = await User.findOne({ email: 'admin@globaltrade.io' });
+    if (!adminExists) {
+      console.log('[Auto-Seed] Provisioning Super Admin account (admin@globaltrade.io)...');
+      await User.create({
+        name: 'Alexander Vance',
+        email: 'admin@globaltrade.io',
+        password: 'Password123!',
+        companyName: 'Global FX Router Operations',
+        role: 'admin',
+        pricingPlan: 'fixed_retainer',
+        basisPointSplitRate: 20,
+      });
+      console.log('[Auto-Seed] Super Admin account ready.');
+    }
+
+    // 2. Ensure Treasury Manager Account
+    const treasuryExists = await User.findOne({ email: 'treasury@globaltrade.io' });
+    if (!treasuryExists) {
+      console.log('[Auto-Seed] Provisioning Treasury Manager account (treasury@globaltrade.io)...');
       await User.create({
         name: 'Elena Rostova',
         email: process.env.INITIAL_ADMIN_EMAIL || 'treasury@globaltrade.io',
@@ -134,7 +151,7 @@ const ensureInitialData = async () => {
         pricingPlan: 'basis_point_split',
         basisPointSplitRate: 20,
       });
-      console.log('[Auto-Seed] Default admin account provisioned.');
+      console.log('[Auto-Seed] Treasury Manager account ready.');
     }
 
     const rateFeedCount = await RateFeed.countDocuments();

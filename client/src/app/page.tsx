@@ -22,6 +22,14 @@ import {
   Mail,
   X,
   AlertCircle,
+  Sliders,
+  ShieldAlert,
+  Save,
+  Server,
+  Check,
+  PlusCircle,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 import {
   fetchCorridors,
@@ -32,6 +40,11 @@ import {
   registerApi,
   getMeApi,
   executeTransferApi,
+  fetchAdminOverview,
+  fetchAdminUsers,
+  updateAdminUserPlan,
+  updateAdminRailConfig,
+  createAdminCorridor,
   AuthResponse,
 } from '@/lib/api';
 import {
@@ -40,10 +53,12 @@ import {
   Supplier,
   AnalyticsSummary,
   EvaluatedRoute,
+  AdminOverview,
+  AdminUser,
 } from '@/types/fx';
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<'router' | 'spreads' | 'suppliers' | 'analytics'>('router');
+  const [activeTab, setActiveTab] = useState<'router' | 'spreads' | 'suppliers' | 'analytics' | 'admin'>('router');
   const [corridors, setCorridors] = useState<RateFeedCorridor[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
@@ -73,10 +88,21 @@ export default function DashboardPage() {
   const [executionError, setExecutionError] = useState<string | null>(null);
   const [quoteCountdown, setQuoteCountdown] = useState<number>(120);
 
+  // Admin Panel States
+  const [adminOverview, setAdminOverview] = useState<AdminOverview | null>(null);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [selectedAdminCorridor, setSelectedAdminCorridor] = useState<string>('USD-EUR');
+  const [adminEditableRails, setAdminEditableRails] = useState<any[]>([]);
+  const [adminSavingRailId, setAdminSavingRailId] = useState<string | null>(null);
+  const [adminNotification, setAdminNotification] = useState<string | null>(null);
+  const [isAddingCorridor, setIsAddingCorridor] = useState(false);
+  const [newCorridorSource, setNewCorridorSource] = useState('USD');
+  const [newCorridorTarget, setNewCorridorTarget] = useState('JPY');
+  const [newCorridorMid, setNewCorridorMid] = useState(153.25);
+
   // Load initial session and market data
   useEffect(() => {
     async function loadData() {
-      // Check existing user token
       const user = await getMeApi();
       if (user) {
         setCurrentUser(user);
@@ -93,9 +119,35 @@ export default function DashboardPage() {
       if (supplierData.length > 0) {
         setSelectedSupplierId(supplierData[0]._id);
       }
+
+      // Initial admin corridor selection
+      if (corridorData.length > 0) {
+        setSelectedAdminCorridor(corridorData[0].corridor);
+        setAdminEditableRails(corridorData[0].rails);
+      }
     }
     loadData();
   }, []);
+
+  // Sync admin editable rails when corridor changes
+  useEffect(() => {
+    const found = corridors.find((c) => c.corridor === selectedAdminCorridor);
+    if (found) {
+      setAdminEditableRails(JSON.parse(JSON.stringify(found.rails)));
+    }
+  }, [selectedAdminCorridor, corridors]);
+
+  // Load admin data when admin tab is activated
+  useEffect(() => {
+    if (activeTab === 'admin') {
+      async function loadAdminData() {
+        const [overview, users] = await Promise.all([fetchAdminOverview(), fetchAdminUsers()]);
+        setAdminOverview(overview);
+        setAdminUsers(users);
+      }
+      loadAdminData();
+    }
+  }, [activeTab, currentUser]);
 
   // Update quote on form changes
   useEffect(() => {
@@ -153,7 +205,6 @@ export default function DashboardPage() {
       setCurrentUser(res.user);
       setIsAuthModalOpen(false);
 
-      // Refresh suppliers and analytics with the authenticated user context
       const [supplierData, analyticsData] = await Promise.all([fetchSuppliers(), fetchAnalytics()]);
       setSuppliers(supplierData);
       setAnalytics(analyticsData);
@@ -167,20 +218,26 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setAuthEmail('treasury@globaltrade.io');
-    setAuthPassword('Password123!');
+  const handleDemoLogin = async (role: 'treasury' | 'admin') => {
+    const email = role === 'admin' ? 'admin@globaltrade.io' : 'treasury@globaltrade.io';
+    const pwd = 'Password123!';
+    setAuthEmail(email);
+    setAuthPassword(pwd);
     setAuthLoading(true);
     setAuthError(null);
 
     try {
-      const res = await loginApi('treasury@globaltrade.io', 'Password123!');
+      const res = await loginApi(email, pwd);
       setCurrentUser(res.user);
       setIsAuthModalOpen(false);
 
       const [supplierData, analyticsData] = await Promise.all([fetchSuppliers(), fetchAnalytics()]);
       setSuppliers(supplierData);
       setAnalytics(analyticsData);
+
+      if (role === 'admin') {
+        setActiveTab('admin');
+      }
     } catch (err: any) {
       setAuthError(err.message || 'Demo login failed');
     } finally {
@@ -191,12 +248,14 @@ export default function DashboardPage() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setCurrentUser(null);
+    if (activeTab === 'admin') {
+      setActiveTab('router');
+    }
   };
 
   const handleExecuteTransfer = async () => {
     if (!selectedRoute) return;
 
-    // If unauthenticated, prompt user to log in first
     if (!currentUser) {
       setIsAuthModalOpen(true);
       setAuthError('Please sign in or use 1-Click Demo Login to dispatch and record transfers.');
@@ -242,13 +301,77 @@ export default function DashboardPage() {
         } via ${selectedRoute.name}! Recipient will receive ${targetCurrency} ${selectedRoute.netLandingAmount.toLocaleString()}.`
       );
 
-      // Refresh analytics
       const updatedAnalytics = await fetchAnalytics();
       setAnalytics(updatedAnalytics);
     } catch (err: any) {
       setExecutionError(err.message || 'Failed to dispatch transfer.');
     } finally {
       setIsExecuting(false);
+    }
+  };
+
+  // Admin Actions
+  const handleSaveRailTuning = async (railId: string) => {
+    setAdminSavingRailId(railId);
+    setAdminNotification(null);
+
+    const targetRail = adminEditableRails.find((r) => r.railId === railId);
+    if (!targetRail) return;
+
+    try {
+      await updateAdminRailConfig({
+        corridor: selectedAdminCorridor,
+        railId,
+        spreadBps: Number(targetRail.spreadBps),
+        fixedFee: Number(targetRail.fixedFee),
+        percentageFee: Number(targetRail.percentageFee),
+        estimatedHours: Number(targetRail.estimatedHours),
+        isActive: Boolean(targetRail.isActive),
+      });
+
+      // Refresh corridor data everywhere
+      const updatedCorridors = await fetchCorridors();
+      setCorridors(updatedCorridors);
+
+      // Re-trigger quote calculation
+      const updatedQuote = await fetchRoutingQuote(sourceCurrency, targetCurrency, amount, strategy);
+      setQuote(updatedQuote);
+
+      setAdminNotification(`Successfully updated ${targetRail.name} on corridor ${selectedAdminCorridor}!`);
+    } catch (err: any) {
+      setAdminNotification(`Update notice: ${err.message || 'Config saved to local session'}`);
+    } finally {
+      setAdminSavingRailId(null);
+    }
+  };
+
+  const handleUpdateUserPlan = async (userId: string, plan: 'fixed_retainer' | 'basis_point_split', bpsRate: number) => {
+    try {
+      await updateAdminUserPlan(userId, { pricingPlan: plan, basisPointSplitRate: bpsRate });
+      const updatedUsers = await fetchAdminUsers();
+      setAdminUsers(updatedUsers);
+      setAdminNotification('Corporate client billing plan updated successfully.');
+    } catch (err: any) {
+      setAdminNotification(`Client update notice: ${err.message}`);
+    }
+  };
+
+  const handleCreateNewCorridor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createAdminCorridor({
+        sourceCurrency: newCorridorSource.toUpperCase(),
+        targetCurrency: newCorridorTarget.toUpperCase(),
+        midMarketRate: Number(newCorridorMid),
+      });
+
+      const updatedCorridors = await fetchCorridors();
+      setCorridors(updatedCorridors);
+      setSelectedAdminCorridor(`${newCorridorSource.toUpperCase()}-${newCorridorTarget.toUpperCase()}`);
+      setIsAddingCorridor(false);
+      setAdminNotification(`Provisioned new corridor ${newCorridorSource}-${newCorridorTarget}!`);
+    } catch (err: any) {
+      setAdminNotification(`Corridor notice: ${err.message}`);
     }
   };
 
@@ -267,6 +390,11 @@ export default function DashboardPage() {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
                   Router v2.4
                 </span>
+                {currentUser?.role === 'admin' && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    SUPER ADMIN
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400">Multi-Rail Spread Tracking & Remittance Engine</p>
             </div>
@@ -281,7 +409,13 @@ export default function DashboardPage() {
             {/* User Profile / Login Toggle */}
             {currentUser ? (
               <div className="flex items-center gap-3 border-l border-slate-800 pl-3 sm:pl-4">
-                <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs font-semibold text-emerald-400 border border-emerald-500/30">
+                <div
+                  className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold border ${
+                    currentUser.role === 'admin'
+                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  }`}
+                >
                   <UserIcon className="h-4 w-4" />
                 </div>
                 <div className="text-left hidden sm:block">
@@ -320,6 +454,7 @@ export default function DashboardPage() {
             { id: 'spreads', label: 'Multi-Rail Spread Matrix', icon: TrendingDown },
             { id: 'suppliers', label: 'Commercial Suppliers', icon: Building2 },
             { id: 'analytics', label: 'Savings & Profit Split Audit', icon: DollarSign },
+            { id: 'admin', label: 'Admin Control Center', icon: Sliders, isSpecial: true },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -330,15 +465,23 @@ export default function DashboardPage() {
                   setActiveTab(tab.id as typeof activeTab);
                   setExecutionSuccess(null);
                   setExecutionError(null);
+                  setAdminNotification(null);
                 }}
                 className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
                   isActive
-                    ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
+                    ? tab.isSpecial
+                      ? 'border-purple-500 text-purple-300 bg-purple-500/10'
+                      : 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
                     : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
                 }`}
               >
-                <Icon className={`h-4 w-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                <Icon className={`h-4 w-4 ${isActive ? (tab.isSpecial ? 'text-purple-400' : 'text-emerald-400') : 'text-slate-500'}`} />
                 {tab.label}
+                {tab.isSpecial && (
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    Admin
+                  </span>
+                )}
               </button>
             );
           })}
@@ -358,6 +501,23 @@ export default function DashboardPage() {
             <button
               onClick={() => setExecutionSuccess(null)}
               className="text-emerald-400 hover:text-emerald-200 text-xs px-2 py-1"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Banner Alert for Admin Notifications */}
+        {adminNotification && (
+          <div className="p-4 rounded-xl bg-purple-950/70 border border-purple-500/40 text-purple-200 flex items-start gap-3 shadow-lg animate-in fade-in">
+            <Info className="h-5 w-5 text-purple-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Admin Control Notification</p>
+              <p className="text-xs text-purple-300/90 mt-1">{adminNotification}</p>
+            </div>
+            <button
+              onClick={() => setAdminNotification(null)}
+              className="text-purple-400 hover:text-purple-200 text-xs px-2 py-1"
             >
               Dismiss
             </button>
@@ -384,7 +544,6 @@ export default function DashboardPage() {
         {/* TAB 1: DYNAMIC REMITTANCE ROUTER */}
         {activeTab === 'router' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Left Control Panel (5 cols) */}
             <div className="lg:col-span-5 space-y-6">
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -397,7 +556,6 @@ export default function DashboardPage() {
                   </span>
                 </div>
 
-                {/* Supplier Destination */}
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
                     Target Commercial Supplier
@@ -419,7 +577,6 @@ export default function DashboardPage() {
                   </select>
                 </div>
 
-                {/* Currency Corridor Selection */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1.5">Sending Currency</label>
@@ -450,7 +607,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Amount Input */}
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <label className="text-xs font-medium text-slate-300">Transfer Amount ({sourceCurrency})</label>
@@ -468,7 +624,6 @@ export default function DashboardPage() {
                     />
                   </div>
 
-                  {/* Quick Preset Buttons */}
                   <div className="flex gap-2 mt-2">
                     {[25000, 50000, 100000, 250000].map((preset) => (
                       <button
@@ -486,7 +641,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Routing Strategy Selector */}
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-2">
                     Dynamic Routing Priority Strategy
@@ -521,7 +675,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Invoice Ref */}
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">Commercial Invoice Ref</label>
                   <input
@@ -534,7 +687,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Benchmark Summary Box */}
               {quote && (
                 <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-3 text-xs">
                   <div className="flex items-center justify-between text-slate-400">
@@ -558,7 +710,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Right Multi-Rail Quote Comparator (7 cols) */}
             <div className="lg:col-span-7 space-y-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -576,7 +727,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Route Option Cards */}
               <div className="space-y-4">
                 {quote?.routes?.map((route) => {
                   const isSelected = selectedRoute?.railId === route.railId;
@@ -592,7 +742,6 @@ export default function DashboardPage() {
                           : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
                       }`}
                     >
-                      {/* Optimal Route Tag */}
                       <div className="flex items-center justify-between gap-2 mb-3">
                         <div className="flex items-center gap-2">
                           <span
@@ -622,7 +771,6 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      {/* Main Metrics Row */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3 border-y border-slate-800/70 text-xs">
                         <div>
                           <p className="text-slate-400 text-[11px]">Net Payout Amount</p>
@@ -654,7 +802,6 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      {/* Savings & Platform Attribution Footer */}
                       <div className="mt-3 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
                         <div className="flex items-center gap-3">
                           <span className="text-emerald-400 font-semibold flex items-center gap-1">
@@ -675,7 +822,6 @@ export default function DashboardPage() {
                 })}
               </div>
 
-              {/* Execution Action Button */}
               {selectedRoute && (
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
@@ -749,7 +895,6 @@ export default function DashboardPage() {
                           <span>Fixed Fee: <strong className="text-slate-300 font-mono">${rail.fixedFee}</strong></span>
                           <span>SLA: <strong className="text-slate-300">{rail.estimatedHours}h</strong></span>
                         </div>
-                        {/* Spread Visualizer Bar */}
                         <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden mt-1">
                           <div
                             className={`h-full rounded-full ${
@@ -845,7 +990,6 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
                 <p className="text-xs text-slate-400">Total Routed Remittance Volume</p>
@@ -884,7 +1028,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Rail Distribution Breakdown */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg space-y-4">
               <h3 className="font-semibold text-sm text-white">Execution Rails Allocation</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -921,6 +1064,359 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* TAB 5: ADMIN CONTROL CENTER */}
+        {activeTab === 'admin' && (
+          <div className="space-y-8 animate-in fade-in">
+            {/* Admin Header & Unlock Notice if not super admin */}
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-gradient-to-r from-purple-950/40 via-slate-900 to-slate-900 p-6 rounded-2xl border border-purple-500/30">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold text-xs">
+                    SYSTEM ADMINISTRATOR PANEL
+                  </span>
+                  <span className="text-xs text-slate-400">Real-Time Routing & Client Configuration</span>
+                </div>
+                <h2 className="text-xl font-bold text-white mt-1">Platform Control & Liquidity Tuner</h2>
+              </div>
+
+              {currentUser?.role !== 'admin' && (
+                <button
+                  onClick={() => handleDemoLogin('admin')}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition shadow-lg shadow-purple-600/30 flex items-center gap-2"
+                >
+                  <ShieldAlert className="h-4 w-4" />
+                  1-Click Super Admin Login (admin@globaltrade.io)
+                </button>
+              )}
+            </div>
+
+            {/* Platform Revenue & Global Statistics */}
+            {adminOverview && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                  <p className="text-xs text-slate-400">Total Platform Revenue (Run-rate)</p>
+                  <p className="text-2xl font-bold font-mono text-purple-400 mt-1">
+                    ${adminOverview.totalPlatformRevenueUSD.toLocaleString()}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    ${adminOverview.monthlyRetainerRunRate.toLocaleString()} Retainers + ${adminOverview.totalProfitSplitEarned.toLocaleString()} Profit Splits
+                  </p>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                  <p className="text-xs text-slate-400">Total Commercial Volume Routed</p>
+                  <p className="text-2xl font-bold font-mono text-emerald-400 mt-1">
+                    ${adminOverview.totalVolumeUSD.toLocaleString()}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">{adminOverview.totalTransfers} cross-border transactions</p>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                  <p className="text-xs text-slate-400">Corporate Enterprise Accounts</p>
+                  <p className="text-2xl font-bold font-mono text-cyan-400 mt-1">
+                    {adminOverview.totalUsers} Active
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {adminOverview.retainerClientsCount} on $2k Retainer • {adminOverview.bpsClientsCount} on Profit Split
+                  </p>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                  <p className="text-xs text-slate-400">Active Corridors & System Health</p>
+                  <p className="text-2xl font-bold font-mono text-white mt-1">
+                    {adminOverview.activeCorridorsCount} Corridors
+                  </p>
+                  <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+                    <Server className="h-3 w-3" />
+                    Status: {adminOverview.systemHealth.status} (RAM: {adminOverview.systemHealth.memoryRssMb}MB)
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* SECTION 1: LIVE RAIL & SPREAD TUNER */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-800">
+                <div>
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    <Sliders className="h-4 w-4 text-purple-400" />
+                    Live Rail Spread & SLA Tuner (Real-Time Margin Engine)
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Adjust rail spread markups in basis points (bps) or toggle the emergency rail kill-switch.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-300 font-medium">Corridor:</label>
+                  <select
+                    value={selectedAdminCorridor}
+                    onChange={(e) => setSelectedAdminCorridor(e.target.value)}
+                    className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                  >
+                    {corridors.map((c) => (
+                      <option key={c.corridor} value={c.corridor}>
+                        {c.corridor} (Mid: {c.midMarketRate})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-800/80 text-slate-400 font-semibold border-b border-slate-700 uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="px-4 py-3">Rail Network</th>
+                      <th className="px-4 py-3">Rail Category</th>
+                      <th className="px-4 py-3">Spread (Basis Points)</th>
+                      <th className="px-4 py-3">Fixed Wire Fee ($)</th>
+                      <th className="px-4 py-3">Delivery SLA (Hours)</th>
+                      <th className="px-4 py-3">Kill-Switch</th>
+                      <th className="px-4 py-3 text-right">Apply</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {adminEditableRails.map((rail, idx) => (
+                      <tr key={rail.railId} className="hover:bg-slate-800/30 transition">
+                        <td className="px-4 py-3 font-semibold text-white">{rail.name}</td>
+                        <td className="px-4 py-3">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                            {rail.railType}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              min="0"
+                              max="1000"
+                              value={rail.spreadBps}
+                              onChange={(e) => {
+                                const copy = [...adminEditableRails];
+                                copy[idx].spreadBps = Number(e.target.value);
+                                setAdminEditableRails(copy);
+                              }}
+                              className="w-20 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-emerald-400 font-mono focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                            <span className="text-slate-500 font-mono">bps</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-500">$</span>
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={rail.fixedFee}
+                              onChange={(e) => {
+                                const copy = [...adminEditableRails];
+                                copy[idx].fixedFee = Number(e.target.value);
+                                setAdminEditableRails(copy);
+                              }}
+                              className="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={rail.estimatedHours}
+                            onChange={(e) => {
+                              const copy = [...adminEditableRails];
+                              copy[idx].estimatedHours = Number(e.target.value);
+                              setAdminEditableRails(copy);
+                            }}
+                            className="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const copy = [...adminEditableRails];
+                              copy[idx].isActive = !copy[idx].isActive;
+                              setAdminEditableRails(copy);
+                            }}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
+                              rail.isActive !== false
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                            }`}
+                          >
+                            {rail.isActive !== false ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                            {rail.isActive !== false ? 'Active Rail' : 'Disabled'}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => handleSaveRailTuning(rail.railId)}
+                            disabled={adminSavingRailId === rail.railId}
+                            className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs transition disabled:opacity-50 flex items-center gap-1.5 ml-auto"
+                          >
+                            {adminSavingRailId === rail.railId ? (
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Save className="h-3.5 w-3.5" />
+                            )}
+                            Save
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* SECTION 2: CORPORATE CLIENT ACCOUNTS & PRICING PLANS */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+              <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+                <div>
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-cyan-400" />
+                    Corporate Client Accounts & Monetization Tiers
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Assign and manage client billing models: $2,000/mo flat retainer vs basis point (bps) profit split.
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-800/80 text-slate-400 font-semibold border-b border-slate-700 uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="px-4 py-3">Client Company & Email</th>
+                      <th className="px-4 py-3">User Role</th>
+                      <th className="px-4 py-3">Current Monetization Model</th>
+                      <th className="px-4 py-3">Profit Split Cut (bps)</th>
+                      <th className="px-4 py-3">Account Status</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {adminUsers.map((u) => (
+                      <tr key={u._id} className="hover:bg-slate-800/30 transition">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-white">{u.companyName || u.name}</p>
+                          <p className="text-[11px] text-slate-400 font-mono">{u.email}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
+                              u.role === 'admin'
+                                ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                                : 'bg-slate-800 text-slate-300 border-slate-700'
+                            }`}
+                          >
+                            {u.role.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={u.pricingPlan}
+                            onChange={(e) =>
+                              handleUpdateUserPlan(
+                                u._id,
+                                e.target.value as 'fixed_retainer' | 'basis_point_split',
+                                u.basisPointSplitRate
+                              )
+                            }
+                            className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-cyan-300 font-medium focus:outline-none"
+                          >
+                            <option value="fixed_retainer">$2,000/mo Flat Retainer</option>
+                            <option value="basis_point_split">Basis Point Profit Split</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 font-mono">
+                            <span className="text-emerald-400 font-bold">{u.basisPointSplitRate}%</span>
+                            <span className="text-slate-500 text-[11px]">of savings</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                            Active
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-xs text-slate-500 font-mono">Enforced</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* SECTION 3: PROVISION NEW CORRIDOR MODAL/FORM */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+                <div>
+                  <h3 className="font-bold text-white text-base flex items-center gap-2">
+                    <PlusCircle className="h-4 w-4 text-emerald-400" />
+                    Provision New Currency Corridor
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Instantly deploy multi-rail quotes and domestic clearing for a new global currency pair.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleCreateNewCorridor} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end text-xs">
+                <div>
+                  <label className="block font-medium text-slate-300 mb-1">Source Currency (3 Letters)</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={3}
+                    value={newCorridorSource}
+                    onChange={(e) => setNewCorridorSource(e.target.value.toUpperCase())}
+                    placeholder="USD"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono uppercase focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-300 mb-1">Target Currency (3 Letters)</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={3}
+                    value={newCorridorTarget}
+                    onChange={(e) => setNewCorridorTarget(e.target.value.toUpperCase())}
+                    placeholder="CAD"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono uppercase focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-300 mb-1">Base Mid-Market Rate</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    required
+                    value={newCorridorMid}
+                    onChange={(e) => setNewCorridorMid(Number(e.target.value))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 font-semibold text-slate-950 text-xs transition shadow-lg shadow-emerald-500/20"
+                  >
+                    Provision Corridor Rails
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* AUTHENTICATION & LOGIN MODAL */}
@@ -946,7 +1442,6 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* Error Message */}
             {authError && (
               <div className="mb-4 p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
@@ -954,20 +1449,27 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* 1-Click Demo Login Button */}
-            <div className="mb-5">
+            {/* 1-Click Demo Buttons */}
+            <div className="mb-5 space-y-2">
               <button
                 type="button"
-                onClick={handleDemoLogin}
+                onClick={() => handleDemoLogin('treasury')}
                 disabled={authLoading}
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20 hover:from-emerald-500/30 hover:to-cyan-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2 transition shadow-sm"
               >
                 <Sparkles className="h-4 w-4 text-emerald-400" />
-                1-Click Demo Login (Pre-filled Admin)
+                1-Click Treasury Manager Login (Elena Rostova)
               </button>
-              <p className="text-[10px] text-center text-slate-500 mt-1.5">
-                Logs in as <code>treasury@globaltrade.io</code>
-              </p>
+
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('admin')}
+                disabled={authLoading}
+                className="w-full py-2 px-4 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 text-xs font-semibold flex items-center justify-center gap-2 transition"
+              >
+                <ShieldAlert className="h-4 w-4 text-purple-400" />
+                1-Click Super Admin Login (Alexander Vance)
+              </button>
             </div>
 
             <div className="relative my-4">

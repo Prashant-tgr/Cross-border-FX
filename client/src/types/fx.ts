@@ -132,3 +132,44 @@ export interface AnalyticsSummary {
     FINTECH_PARTNER: number;
   };
 }
+
+export interface AdminUser {
+  _id: string;
+  name: string;
+  email: string;
+  companyName: string;
+  role: 'admin' | 'treasury_manager' | 'operator' | 'auditor';
+  pricingPlan: 'fixed_retainer' | 'basis_point_split';
+  basisPointSplitRate: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AdminOverview {
+  totalUsers: number;
+  retainerClientsCount: number;
+  bpsClientsCount: number;
+  totalTransfers: number;
+  totalVolumeUSD: number;
+  totalClientSavingsUSD: number;
+  totalPlatformRevenueUSD: number;
+  monthlyRetainerRunRate: number;
+  totalProfitSplitEarned: number;
+  activeCorridorsCount: number;
+  systemHealth: {
+    status: string;
+    uptimeSeconds: number;
+    nodeVersion: string;
+    memoryRssMb: number;
+  };
+}
+
+export interface UpdateRailPayload {
+  corridor: string;
+  railId: string;
+  spreadBps?: number;
+  fixedFee?: number;
+  percentageFee?: number;
+  estimatedHours?: number;
+  isActive?: boolean;
+}

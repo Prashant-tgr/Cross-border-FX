@@ -20,7 +20,17 @@ const seedData = async () => {
     await RateFeed.deleteMany({});
     await Transfer.deleteMany({});
 
-    // 1. Create Default Corporate Treasury User
+    // 1. Create Default Corporate Treasury User & Super Admin
+    const superAdmin = await User.create({
+      name: 'Alexander Vance',
+      email: 'admin@globaltrade.io',
+      password: 'Password123!',
+      companyName: 'Global FX Router Operations',
+      role: 'admin',
+      pricingPlan: 'fixed_retainer',
+      basisPointSplitRate: 20,
+    });
+
     const user = await User.create({
       name: 'Elena Rostova',
       email: 'treasury@globaltrade.io',
@@ -31,7 +41,8 @@ const seedData = async () => {
       basisPointSplitRate: 20, // 20% of customer savings
     });
 
-    console.log(`[Seed] Created User: ${user.email} (Password: Password123!)`);
+    console.log(`[Seed] Created Super Admin: ${superAdmin.email} (Password: Password123!)`);
+    console.log(`[Seed] Created Treasury User: ${user.email} (Password: Password123!)`);
 
     // 2. Create Global Suppliers
     const suppliers = await Supplier.insertMany([

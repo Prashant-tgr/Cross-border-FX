@@ -4,6 +4,9 @@ import {
   Supplier,
   TransferRecord,
   AnalyticsSummary,
+  AdminOverview,
+  AdminUser,
+  UpdateRailPayload,
 } from '@/types/fx';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -585,6 +588,165 @@ export async function executeTransferApi(payload: any): Promise<any> {
   const json = await res.json();
   if (!res.ok) {
     throw new Error(json.message || 'Transfer execution failed.');
+  }
+  return json.data;
+}
+
+export const MOCK_ADMIN_OVERVIEW: AdminOverview = {
+  totalUsers: 14,
+  retainerClientsCount: 6,
+  bpsClientsCount: 8,
+  totalTransfers: 142,
+  totalVolumeUSD: 4850000,
+  totalClientSavingsUSD: 114200,
+  totalPlatformRevenueUSD: 34840,
+  monthlyRetainerRunRate: 12000,
+  totalProfitSplitEarned: 22840,
+  activeCorridorsCount: 8,
+  systemHealth: {
+    status: 'OPERATIONAL',
+    uptimeSeconds: 14290,
+    nodeVersion: 'v23.11.0',
+    memoryRssMb: 68.4,
+  },
+};
+
+export const MOCK_ADMIN_USERS: AdminUser[] = [
+  {
+    _id: 'usr_admin',
+    name: 'Alexander Vance',
+    email: 'admin@globaltrade.io',
+    companyName: 'Global FX Router Operations',
+    role: 'admin',
+    pricingPlan: 'fixed_retainer',
+    basisPointSplitRate: 20,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    _id: 'usr_treasury',
+    name: 'Elena Rostova',
+    email: 'treasury@globaltrade.io',
+    companyName: 'Apex Industrial Dynamics Ltd.',
+    role: 'treasury_manager',
+    pricingPlan: 'basis_point_split',
+    basisPointSplitRate: 20,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    _id: 'usr_logistics',
+    name: 'David Sterling',
+    email: 'd.sterling@britishtrade.co.uk',
+    companyName: 'Sterling Transatlantic Freight Ltd.',
+    role: 'treasury_manager',
+    pricingPlan: 'fixed_retainer',
+    basisPointSplitRate: 25,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    _id: 'usr_tech',
+    name: 'Priya Sharma',
+    email: 'finance@bangaloretech.in',
+    companyName: 'Bangalore Microcircuits Corp.',
+    role: 'operator',
+    pricingPlan: 'basis_point_split',
+    basisPointSplitRate: 20,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+];
+
+export async function fetchAdminOverview(): Promise<AdminOverview> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const res = await fetch(`${API_BASE_URL}/admin/overview`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.data;
+    }
+  } catch {
+    // fallback
+  }
+  return MOCK_ADMIN_OVERVIEW;
+}
+
+export async function fetchAdminUsers(): Promise<AdminUser[]> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const res = await fetch(`${API_BASE_URL}/admin/users`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.data;
+    }
+  } catch {
+    // fallback
+  }
+  return MOCK_ADMIN_USERS;
+}
+
+export async function updateAdminUserPlan(
+  id: string,
+  payload: { role?: string; pricingPlan?: string; basisPointSplitRate?: number; isActive?: boolean }
+): Promise<AdminUser> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Failed to update user plan');
+  }
+  return json.data;
+}
+
+export async function updateAdminRailConfig(payload: UpdateRailPayload): Promise<any> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const res = await fetch(`${API_BASE_URL}/admin/corridors/rail`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Failed to update rail configuration');
+  }
+  return json.data;
+}
+
+export async function createAdminCorridor(payload: {
+  sourceCurrency: string;
+  targetCurrency: string;
+  midMarketRate: number;
+}): Promise<any> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const res = await fetch(`${API_BASE_URL}/admin/corridors`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Failed to create corridor');
   }
   return json.data;
 }
