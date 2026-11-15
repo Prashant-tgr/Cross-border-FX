@@ -30,9 +30,10 @@ type Mode = 'login' | 'register';
 interface LoginScreenProps {
   onSuccess?: () => void;
   onClose?: () => void;
+  onContinueAsGuest?: () => void;
 }
 
-export default function LoginScreen({ onSuccess, onClose }: LoginScreenProps) {
+export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: LoginScreenProps) {
   const { login, register } = useAuth();
 
   const [mode, setMode] = useState<Mode>('login');
@@ -272,6 +273,16 @@ export default function LoginScreen({ onSuccess, onClose }: LoginScreenProps) {
           </Pressable>
         </View>
 
+        {/* Guest access option */}
+        {onContinueAsGuest && (
+          <Pressable
+            onPress={onContinueAsGuest}
+            style={({ pressed }) => [styles.guestLinkBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.guestLinkText}>Preview Dashboard as Guest →</Text>
+          </Pressable>
+        )}
+
         {/* Footer note */}
         <Text style={styles.footer}>
           Admin access requires manual credential entry.{'\n'}No 1-click admin shortcut is provided.
@@ -438,6 +449,18 @@ const styles = StyleSheet.create({
   // States
   pressed: { opacity: 0.75 },
   disabled: { opacity: 0.5 },
+
+  // Guest Link
+  guestLinkBtn: {
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  guestLinkText: {
+    fontSize: FontSize.sm,
+    color: Colors.emeraldLight,
+    fontWeight: FontWeight.semibold,
+  },
 
   // Footer
   footer: {

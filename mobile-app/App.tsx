@@ -8,7 +8,7 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  Modal,
+  ActivityIndicator,
   Platform,
   StatusBar as RNStatusBar,
 } from 'react-native';
@@ -71,10 +71,13 @@ const ADMIN_TAB: TabConfig = {
   isSpecial: true,
 };
 
-function MainApp() {
+interface MainAppProps {
+  onRequireLogin: () => void;
+}
+
+function MainApp({ onRequireLogin }: MainAppProps) {
   const { user, isAuthenticated, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('router');
-  const [isAuthModalVisible, setIsAuthModalVisible] = useState(false);
 
   // Tabs list: Admin tab is STRICTLY CONDITIONAL based on user role
   const availableTabs: TabConfig[] = [
@@ -137,7 +140,7 @@ function MainApp() {
             </View>
           ) : (
             <Pressable
-              onPress={() => setIsAuthModalVisible(true)}
+              onPress={onRequireLogin}
               style={({ pressed }) => [styles.signInBtn, pressed && styles.pressed]}
             >
               <Ionicons name="log-in-outline" size={14} color={Colors.bg} />
@@ -191,34 +194,89 @@ function MainApp() {
           );
         })}
       </View>
-
-      {/* Auth / Login Modal */}
-      <Modal
-        visible={isAuthModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setIsAuthModalVisible(false)}
-      >
-        <LoginScreen
-          onSuccess={() => setIsAuthModalVisible(false)}
-          onClose={() => setIsAuthModalVisible(false)}
-        />
-      </Modal>
     </SafeAreaView>
   );
+}
+
+function RootNavigator() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [isGuestMode, setIsGuestMode] = useState(false);
+
+  // 1. Session restoration loader
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.splashContainer}>
+        <StatusBar style="light" />
+        <View style={styles.splashLogo}>
+          <Ionicons name="swap-horizontal" size={36} color={Colors.emerald} />
+        </View>
+        <ActivityIndicator size="large" color={Colors.emerald} style={{ marginTop: 24 }} />
+        <Text style={styles.splashTitle}>Cross-Border FX</Text>
+        <Text style={styles.splashSub}>Verifying Encrypted Session...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // 2. Initial Gate: If not authenticated and not explicitly previewing as guest -> Show Login/Register Page!
+  if (!isAuthenticated && !isGuestMode) {
+    return (
+      <SafeAreaView style={styles.authSafeArea}>
+        <StatusBar style="light" />
+        <LoginScreen
+          onSuccess={() => setIsGuestMode(false)}
+          onContinueAsGuest={() => setIsGuestMode(true)}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // 3. User is signed in (or previewing as guest) -> Render Main Dashboard
+  return <MainApp onRequireLogin={() => setIsGuestMode(false)} />;
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <MainApp />
+        <RootNavigator />
       </AuthProvider>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  splashContainer: {
+    flex: 1,
+    backgroundColor: Colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xl,
+  },
+  splashLogo: {
+    width: 64,
+    height: 64,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.emeraldBg,
+    borderWidth: 1,
+    borderColor: Colors.emeraldBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splashTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+    marginTop: Spacing.md,
+  },
+  splashSub: {
+    fontSize: FontSize.xs,
+    color: Colors.textDim,
+    marginTop: 4,
+  },
+  authSafeArea: {
+    flex: 1,
+    backgroundColor: Colors.bg,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: Colors.bg,
