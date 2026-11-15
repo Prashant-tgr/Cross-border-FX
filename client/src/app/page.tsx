@@ -87,6 +87,8 @@ export default function DashboardPage() {
   const [executionSuccess, setExecutionSuccess] = useState<string | null>(null);
   const [executionError, setExecutionError] = useState<string | null>(null);
   const [quoteCountdown, setQuoteCountdown] = useState<number>(120);
+  const [isFetchingQuote, setIsFetchingQuote] = useState(false);
+  const [quoteRefreshNotice, setQuoteRefreshNotice] = useState<string | null>(null);
 
   // Admin Panel States
   const [adminOverview, setAdminOverview] = useState<AdminOverview | null>(null);
@@ -181,6 +183,28 @@ export default function DashboardPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [quoteCountdown]);
+
+  const handleGetLiveQuotes = async () => {
+    setIsFetchingQuote(true);
+    setQuoteRefreshNotice(null);
+    try {
+      const q = await fetchRoutingQuote(sourceCurrency, targetCurrency, amount, strategy);
+      setQuote(q);
+      if (q.routes && q.routes.length > 0) {
+        const recommended = q.routes.find((r) => r.isRecommended) || q.routes[0];
+        setSelectedRoute(recommended);
+      }
+      setQuoteCountdown(120);
+      setQuoteRefreshNotice(
+        `Live rates refreshed & locked for ${sourceCurrency}-${targetCurrency} at ${new Date().toLocaleTimeString()}`
+      );
+      setTimeout(() => setQuoteRefreshNotice(null), 4000);
+    } catch (err: any) {
+      console.error('Failed to refresh quote:', err);
+    } finally {
+      setIsFetchingQuote(false);
+    }
+  };
 
   const handleSelectSupplierForPayment = (supplier: Supplier) => {
     setSelectedSupplierId(supplier._id);
@@ -687,6 +711,23 @@ export default function DashboardPage() {
                     placeholder="e.g. INV-2026-904"
                   />
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleGetLiveQuotes}
+                  disabled={isFetchingQuote}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isFetchingQuote ? 'animate-spin' : ''}`} />
+                  {isFetchingQuote ? 'Fetching Live Rates...' : 'Get Live Quotes'}
+                </button>
+
+                {quoteRefreshNotice && (
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2 animate-in fade-in">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                    <span>{quoteRefreshNotice}</span>
+                  </div>
+                )}
               </div>
 
               {quote && (
@@ -723,10 +764,16 @@ export default function DashboardPage() {
                     Ranked dynamically across SWIFT, Local domestic clearing, and Fintech partners
                   </p>
                 </div>
-                <div className="text-xs text-slate-400 flex items-center gap-1">
-                  <RefreshCw className="h-3 w-3 animate-spin text-emerald-400" />
-                  Live Spreads
-                </div>
+                <button
+                  type="button"
+                  onClick={handleGetLiveQuotes}
+                  disabled={isFetchingQuote}
+                  title="Click to refresh live rates immediately"
+                  className="text-xs text-slate-300 hover:text-emerald-400 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <RefreshCw className={`h-3 w-3 text-emerald-400 ${isFetchingQuote ? 'animate-spin' : ''}`} />
+                  <span>{isFetchingQuote ? 'Refreshing...' : 'Refresh Quotes'}</span>
+                </button>
               </div>
 
               <div className="space-y-4">

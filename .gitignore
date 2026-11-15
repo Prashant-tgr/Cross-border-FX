@@ -30,3 +30,11 @@ logs/
 Thumbs.db
 .vscode/
 .idea/
+
+# Expo & Mobile
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
