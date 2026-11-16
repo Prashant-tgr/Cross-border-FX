@@ -19,7 +19,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -74,20 +73,6 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
     }
   };
 
-  const handleDemoLogin = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      await login('treasury@globaltrade.io', 'Password123!');
-      onSuccess?.();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Demo login failed.';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -136,22 +121,6 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
                 Register
               </Text>
             </Pressable>
-          </View>
-
-          {/* Demo Button */}
-          <Pressable
-            style={({ pressed }) => [styles.demoBtn, pressed && styles.pressed]}
-            onPress={handleDemoLogin}
-            disabled={loading}
-          >
-            <Ionicons name="flash" size={16} color={Colors.emerald} />
-            <Text style={styles.demoBtnText}>1-Click Client Sandbox (Elena Rostova)</Text>
-          </Pressable>
-
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or enter credentials</Text>
-            <View style={styles.dividerLine} />
           </View>
 
           {/* Error */}
@@ -285,7 +254,7 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
 
         {/* Footer note */}
         <Text style={styles.footer}>
-          Admin access requires manual credential entry.{'\n'}No 1-click admin shortcut is provided.
+          Admin access requires manual credential entry.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -364,26 +333,6 @@ const styles = StyleSheet.create({
   modeBtnActive: { backgroundColor: Colors.surface },
   modeBtnText: { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: FontWeight.medium },
   modeBtnTextActive: { color: Colors.text, fontWeight: FontWeight.semibold },
-
-  // Demo
-  demoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    paddingVertical: Spacing.sm + 2,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.emeraldBorder,
-    backgroundColor: Colors.emeraldBg,
-    marginBottom: Spacing.md,
-  },
-  demoBtnText: { fontSize: FontSize.sm, color: Colors.emeraldLight, fontWeight: FontWeight.semibold },
-
-  // Divider
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md, gap: Spacing.sm },
-  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerText: { fontSize: FontSize.xs, color: Colors.textDim },
 
   // Error
   errorBox: {

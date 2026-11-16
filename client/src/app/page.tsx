@@ -246,29 +246,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    const email = 'treasury@globaltrade.io';
-    const pwd = 'Password123!';
-    setAuthEmail(email);
-    setAuthPassword(pwd);
-    setAuthLoading(true);
-    setAuthError(null);
-
-    try {
-      const res = await loginApi(email, pwd);
-      setCurrentUser(res.user);
-      setIsAuthModalOpen(false);
-
-      const [supplierData, analyticsData] = await Promise.all([fetchSuppliers(), fetchAnalytics()]);
-      setSuppliers(supplierData);
-      setAnalytics(analyticsData);
-    } catch (err: any) {
-      setAuthError(err.message || 'Demo login failed');
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('token');
     setCurrentUser(null);
@@ -282,7 +259,7 @@ export default function DashboardPage() {
 
     if (!currentUser) {
       setIsAuthModalOpen(true);
-      setAuthError('Please sign in or use 1-Click Demo Login to dispatch and record transfers.');
+      setAuthError('Please sign in to dispatch and record transfers.');
       return;
     }
 
@@ -1522,31 +1499,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Demo Sandbox Quick-Tour */}
-            <div className="mb-5">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin()}
-                disabled={authLoading}
-                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20 hover:from-emerald-500/30 hover:to-cyan-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2 transition shadow-sm"
-              >
-                <Sparkles className="h-4 w-4 text-emerald-400" />
-                1-Click Client Sandbox Login (Elena Rostova - Corporate Treasury)
-              </button>
-              <p className="text-[10px] text-slate-500 text-center mt-1.5">
-                Note: Super Administrator privileges require manual authentication with verified admin credentials below.
-              </p>
-            </div>
-
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-800" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-slate-900 px-2 text-slate-500">or enter credentials</span>
-              </div>
-            </div>
-
             <form onSubmit={handleAuthSubmit} className="space-y-4 text-xs">
               {authMode === 'register' && (
                 <>
@@ -1584,7 +1536,7 @@ export default function DashboardPage() {
                     required
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="treasury@globaltrade.io"
+                    placeholder="name@company.com"
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>

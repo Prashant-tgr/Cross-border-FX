@@ -25,6 +25,7 @@ import SuppliersScreen from './src/screens/SuppliersScreen';
 import AnalyticsScreen from './src/screens/AnalyticsScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
 
 type TabType = 'router' | 'spreads' | 'suppliers' | 'analytics' | 'admin';
 
@@ -201,6 +202,7 @@ function MainApp({ onRequireLogin }: MainAppProps) {
 function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
   const [isGuestMode, setIsGuestMode] = useState(false);
+  const [hasStartedOnboarding, setHasStartedOnboarding] = useState(false);
 
   // 1. Session restoration loader
   if (isLoading) {
@@ -217,13 +219,23 @@ function RootNavigator() {
     );
   }
 
-  // 2. Initial Gate: If not authenticated and not explicitly previewing as guest -> Show Login/Register Page!
+  // 2. Unauthenticated users see the welcome screen before login.
   if (!isAuthenticated && !isGuestMode) {
+    if (!hasStartedOnboarding) {
+      return (
+        <SafeAreaView style={styles.authSafeArea}>
+          <StatusBar style="light" />
+          <WelcomeScreen onContinue={() => setHasStartedOnboarding(true)} />
+        </SafeAreaView>
+      );
+    }
+
     return (
       <SafeAreaView style={styles.authSafeArea}>
         <StatusBar style="light" />
         <LoginScreen
           onSuccess={() => setIsGuestMode(false)}
+          onClose={() => setHasStartedOnboarding(false)}
           onContinueAsGuest={() => setIsGuestMode(true)}
         />
       </SafeAreaView>
