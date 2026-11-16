@@ -19,6 +19,9 @@ export const protect = async (req, res, next) => {
     if (!currentUser) {
       return next(new AppError('The user belonging to this token no longer exists.', 401));
     }
+    if ((decoded.ver ?? 0) !== (currentUser.authVersion ?? 0)) {
+      return next(new AppError('Your credentials have changed. Please sign in again.', 401));
+    }
 
     req.user = currentUser;
     next();
@@ -41,7 +44,7 @@ export const optionalProtect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_cross_border_fx_jwt_key_2026');
     const currentUser = await User.findById(decoded.id);
 
-    if (currentUser) {
+    if (currentUser && (decoded.ver ?? 0) === (currentUser.authVersion ?? 0)) {
       req.user = currentUser;
     }
     next();

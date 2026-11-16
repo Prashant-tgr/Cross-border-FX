@@ -38,7 +38,7 @@ Cross-border FX/
 │   │   ├── config/
 │   │   │   └── db.js                     # MongoDB connection with Mongoose
 │   │   ├── controllers/
-│   │   │   ├── auth.controller.js        # JWT registration & login
+│   │   │   ├── auth.controller.js        # JWT registration, login & email OTP password reset
 │   │   │   ├── rates.controller.js       # Live corridor rates & spread queries
 │   │   │   ├── routing.controller.js     # Multi-rail routing quote optimizer
 │   │   │   ├── suppliers.controller.js   # Commercial supplier CRUD operations
@@ -92,6 +92,9 @@ npm run dev
 ```
 Backend runs at: `http://localhost:5000`
 Health check: `http://localhost:5000/api/health`
+
+#### Password reset email
+Password recovery sends a 6-digit email OTP that expires after 10 minutes. Configure `PASSWORD_RESET_SECRET` and the `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` values from `server/.env.example` in the server environment before using the reset flow.
 
 ### 3. Frontend Setup
 ```bash

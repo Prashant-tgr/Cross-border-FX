@@ -23,8 +23,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '../constants/theme';
+import { requestPasswordResetApi, resetPasswordApi } from '../lib/api';
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'forgot-password' | 'reset-password';
 
 interface LoginScreenProps {
   onSuccess?: () => void;
@@ -38,14 +39,18 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     setError(null);
+    setNotice(null);
 
     // Basic validation
     if (!email.trim() || !password.trim()) {
@@ -61,13 +66,56 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
     try {
       if (mode === 'login') {
         await login(email.trim(), password);
-      } else {
+      } else if (mode === 'register') {
         await register(name.trim(), email.trim(), password, companyName.trim());
       }
       onSuccess?.();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Authentication failed.';
       setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestPasswordReset = async () => {
+    setError(null);
+    setNotice(null);
+    if (!email.trim()) {
+      setError('Enter your corporate email to receive a verification code.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const message = await requestPasswordResetApi(email.trim());
+      setMode('reset-password');
+      setNotice(message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unable to request a password reset.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setError(null);
+    setNotice(null);
+    if (!otp.trim() || !newPassword.trim()) {
+      setError('Enter the verification code and your new password.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const message = await resetPasswordApi(email.trim(), otp.trim(), newPassword);
+      setMode('login');
+      setPassword('');
+      setOtp('');
+      setNewPassword('');
+      setNotice(message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unable to reset your password.');
     } finally {
       setLoading(false);
     }
@@ -103,31 +151,38 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
 
         {/* Card */}
         <View style={styles.card}>
-          {/* Mode Toggle */}
-          <View style={styles.modeRow}>
-            <Pressable
-              style={[styles.modeBtn, mode === 'login' && styles.modeBtnActive]}
-              onPress={() => { setMode('login'); setError(null); }}
-            >
-              <Text style={[styles.modeBtnText, mode === 'login' && styles.modeBtnTextActive]}>
-                Sign In
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.modeBtn, mode === 'register' && styles.modeBtnActive]}
-              onPress={() => { setMode('register'); setError(null); }}
-            >
-              <Text style={[styles.modeBtnText, mode === 'register' && styles.modeBtnTextActive]}>
-                Register
-              </Text>
-            </Pressable>
-          </View>
+          {(mode === 'login' || mode === 'register') && (
+            <View style={styles.modeRow}>
+              <Pressable
+                style={[styles.modeBtn, mode === 'login' && styles.modeBtnActive]}
+                onPress={() => { setMode('login'); setError(null); setNotice(null); }}
+              >
+                <Text style={[styles.modeBtnText, mode === 'login' && styles.modeBtnTextActive]}>
+                  Sign In
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modeBtn, mode === 'register' && styles.modeBtnActive]}
+                onPress={() => { setMode('register'); setError(null); setNotice(null); }}
+              >
+                <Text style={[styles.modeBtnText, mode === 'register' && styles.modeBtnTextActive]}>
+                  Register
+                </Text>
+              </Pressable>
+            </View>
+          )}
 
           {/* Error */}
           {error && (
             <View style={styles.errorBox}>
               <Ionicons name="alert-circle" size={16} color={Colors.rose} />
               <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+          {notice && (
+            <View style={styles.noticeBox}>
+              <Ionicons name="checkmark-circle-outline" size={16} color={Colors.emeraldLight} />
+              <Text style={styles.noticeText}>{notice}</Text>
             </View>
           )}
 
@@ -177,6 +232,7 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
                 style={styles.input}
                 value={email}
                 onChangeText={setEmail}
+                editable={mode !== 'reset-password'}
                 placeholder="treasury@company.io"
                 placeholderTextColor={Colors.textDim}
                 keyboardType="email-address"
@@ -188,62 +244,139 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
           </View>
 
           {/* Password */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.inputWrap}>
-              <Ionicons name="lock-closed-outline" size={16} color={Colors.textDim} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, styles.inputPassword]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor={Colors.textDim}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="done"
-                onSubmitEditing={handleSubmit}
-              />
-              <Pressable onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={18}
-                  color={Colors.textMuted}
-                />
-              </Pressable>
-            </View>
-          </View>
+          {(mode === 'login' || mode === 'register') && (
+            <>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="lock-closed-outline" size={16} color={Colors.textDim} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, styles.inputPassword]}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="••••••••"
+                    placeholderTextColor={Colors.textDim}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    onSubmitEditing={handleSubmit}
+                  />
+                  <Pressable onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={Colors.textMuted}
+                    />
+                  </Pressable>
+                </View>
+              </View>
+              {mode === 'login' && (
+                <Pressable
+                  onPress={() => { setMode('forgot-password'); setError(null); setNotice(null); }}
+                  style={styles.forgotBtn}
+                >
+                  <Text style={styles.forgotText}>Forgot password?</Text>
+                </Pressable>
+              )}
+            </>
+          )}
+
+          {mode === 'reset-password' && (
+            <>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Email verification code</Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="key-outline" size={16} color={Colors.textDim} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={otp}
+                    onChangeText={(value) => setOtp(value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="6-digit code"
+                    placeholderTextColor={Colors.textDim}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoCapitalize="none"
+                    returnKeyType="next"
+                  />
+                </View>
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>New password</Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="lock-closed-outline" size={16} color={Colors.textDim} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="At least 6 characters"
+                    placeholderTextColor={Colors.textDim}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    onSubmitEditing={handleResetPassword}
+                  />
+                </View>
+              </View>
+            </>
+          )}
 
           {/* Submit */}
           <Pressable
             style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed, loading && styles.disabled]}
-            onPress={handleSubmit}
+            onPress={
+              mode === 'forgot-password'
+                ? handleRequestPasswordReset
+                : mode === 'reset-password'
+                  ? handleResetPassword
+                  : handleSubmit
+            }
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color={Colors.bg} size="small" />
             ) : (
               <Text style={styles.submitText}>
-                {mode === 'login' ? 'Sign In to Treasury' : 'Create Account'}
+                {mode === 'login'
+                  ? 'Sign In to Treasury'
+                  : mode === 'register'
+                    ? 'Create Account'
+                    : mode === 'forgot-password'
+                      ? 'Send verification code'
+                      : 'Reset password'}
               </Text>
             )}
           </Pressable>
 
           {/* Switch mode */}
-          <Pressable
-            onPress={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(null); }}
-            style={styles.switchBtn}
-          >
-            <Text style={styles.switchText}>
-              {mode === 'login'
-                ? "Don't have an enterprise account? Register"
-                : 'Already registered? Sign in'}
-            </Text>
-          </Pressable>
+          {(mode === 'login' || mode === 'register') ? (
+            <Pressable
+              onPress={() => {
+                setMode(mode === 'login' ? 'register' : 'login');
+                setError(null);
+                setNotice(null);
+              }}
+              style={styles.switchBtn}
+            >
+              <Text style={styles.switchText}>
+                {mode === 'login'
+                  ? "Don't have an enterprise account? Register"
+                  : 'Already registered? Sign in'}
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => { setMode('login'); setError(null); setNotice(null); }}
+              style={styles.switchBtn}
+            >
+              <Text style={styles.switchText}>Back to sign in</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Guest access option */}
-        {onContinueAsGuest && (
+        {onContinueAsGuest && (mode === 'login' || mode === 'register') && (
           <Pressable
             onPress={onContinueAsGuest}
             style={({ pressed }) => [styles.guestLinkBtn, pressed && styles.pressed]}
@@ -347,6 +480,20 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   errorText: { flex: 1, fontSize: FontSize.sm, color: Colors.rose },
+  noticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    backgroundColor: Colors.emeraldBg,
+    borderWidth: 1,
+    borderColor: Colors.emeraldBorder,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  noticeText: { flex: 1, fontSize: FontSize.sm, color: Colors.emeraldLight },
+  forgotBtn: { alignSelf: 'flex-end', marginTop: -Spacing.sm, marginBottom: Spacing.sm, paddingVertical: Spacing.xs },
+  forgotText: { fontSize: FontSize.sm, color: Colors.emeraldLight, fontWeight: FontWeight.semibold },
 
   // Fields
   fieldGroup: { marginBottom: Spacing.md },

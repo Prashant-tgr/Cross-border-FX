@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Platform,
   StatusBar as RNStatusBar,
+  Modal,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -79,6 +80,7 @@ interface MainAppProps {
 function MainApp({ onRequireLogin }: MainAppProps) {
   const { user, isAuthenticated, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('router');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Tabs list: Admin tab is STRICTLY CONDITIONAL based on user role
   const availableTabs: TabConfig[] = [
@@ -88,6 +90,7 @@ function MainApp({ onRequireLogin }: MainAppProps) {
 
   const handleLogout = async () => {
     await logout();
+    setIsProfileOpen(false);
     if (activeTab === 'admin') {
       setActiveTab('router');
     }
@@ -103,9 +106,9 @@ function MainApp({ onRequireLogin }: MainAppProps) {
           <View style={styles.headerLogo}>
             <Ionicons name="swap-horizontal" size={20} color={Colors.text} />
           </View>
-          <View>
+          <View style={styles.headerBrand}>
             <View style={styles.brandRow}>
-              <Text style={styles.brandName}>Cross-Border FX</Text>
+              <Text style={styles.brandName} numberOfLines={1}>Cross-Border FX</Text>
               <View style={styles.versionBadge}>
                 <Text style={styles.versionText}>v2.4</Text>
               </View>
@@ -115,34 +118,34 @@ function MainApp({ onRequireLogin }: MainAppProps) {
                 </View>
               )}
             </View>
-            <Text style={styles.headerTagline}>Spread Tracking & Remittance Engine</Text>
+            <Text style={styles.headerTagline} numberOfLines={1}>Spread Tracking & Remittance Engine</Text>
           </View>
         </View>
 
         {/* Auth / Profile Actions */}
         <View style={styles.headerRight}>
           {isAuthenticated ? (
-            <View style={styles.userRow}>
+            <Pressable
+              onPress={() => setIsProfileOpen(true)}
+              style={({ pressed }) => [styles.profileButton, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Open profile"
+            >
               <View style={[styles.userAvatar, user?.role === 'admin' && styles.adminAvatar]}>
                 <Ionicons
                   name={user?.role === 'admin' ? 'shield-checkmark' : 'person'}
-                  size={14}
+                  size={16}
                   color={user?.role === 'admin' ? Colors.purpleLight : Colors.emeraldLight}
                 />
               </View>
-              <Pressable
-                onPress={handleLogout}
-                style={({ pressed }) => [styles.logoutBtn, pressed && styles.pressed]}
-                hitSlop={8}
-                accessibilityLabel="Sign Out"
-              >
-                <Ionicons name="log-out-outline" size={18} color={Colors.textMuted} />
-              </Pressable>
-            </View>
+              <Ionicons name="chevron-down" size={14} color={Colors.textMuted} />
+            </Pressable>
           ) : (
             <Pressable
               onPress={onRequireLogin}
               style={({ pressed }) => [styles.signInBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in"
             >
               <Ionicons name="log-in-outline" size={14} color={Colors.bg} />
               <Text style={styles.signInBtnText}>Sign In</Text>
@@ -150,6 +153,53 @@ function MainApp({ onRequireLogin }: MainAppProps) {
           )}
         </View>
       </View>
+
+      <Modal
+        visible={isProfileOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsProfileOpen(false)}
+      >
+        <View style={styles.profileModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setIsProfileOpen(false)}
+            accessibilityLabel="Close profile"
+          />
+          <View style={styles.profileCard}>
+            <View style={styles.profileHeading}>
+              <Text style={styles.profileTitle}>Your profile</Text>
+              <Pressable
+                onPress={() => setIsProfileOpen(false)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Close profile"
+              >
+                <Ionicons name="close" size={20} color={Colors.textMuted} />
+              </Pressable>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{user?.name}</Text>
+              <Text style={styles.profileDetail}>{user?.email}</Text>
+              {!!user?.companyName?.trim() && (
+                <View style={styles.organizationRow}>
+                  <Ionicons name="business-outline" size={15} color={Colors.textDim} />
+                  <Text style={styles.profileDetail}>{user.companyName}</Text>
+                </View>
+              )}
+            </View>
+            <Pressable
+              onPress={handleLogout}
+              style={({ pressed }) => [styles.profileLogout, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+            >
+              <Ionicons name="log-out-outline" size={17} color={Colors.rose} />
+              <Text style={styles.profileLogoutText}>Sign out</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* Screen Body */}
       <View style={styles.body}>
@@ -309,6 +359,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
     flex: 1,
+    minWidth: 0,
+  },
+  headerBrand: {
+    flex: 1,
+    minWidth: 0,
   },
   headerLogo: {
     width: 36,
@@ -329,6 +384,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontWeight: FontWeight.bold,
     color: Colors.text,
+    flexShrink: 1,
   },
   versionBadge: {
     backgroundColor: Colors.emeraldBg,
@@ -363,12 +419,7 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
+    flexShrink: 0,
   },
   userAvatar: {
     width: 28,
@@ -384,20 +435,90 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.purpleBg,
     borderColor: Colors.purpleBorder,
   },
-  logoutBtn: {
-    padding: Spacing.xs,
-  },
-  signInBtn: {
+  profileButton: {
+    minWidth: 48,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.xs,
+    borderRadius: Radius.md,
+  },
+  profileModalOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+    backgroundColor: 'rgba(2, 6, 23, 0.72)',
+  },
+  profileCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    backgroundColor: Colors.surface,
+    padding: Spacing.lg,
+  },
+  profileHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  profileTitle: {
+    color: Colors.text,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+  },
+  profileInfo: {
+    paddingVertical: Spacing.lg,
+    gap: Spacing.xs,
+  },
+  profileName: {
+    color: Colors.text,
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+  },
+  profileDetail: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+  },
+  organizationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  profileLogout: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.roseBorder,
+    backgroundColor: Colors.roseBg,
+  },
+  profileLogoutText: {
+    color: Colors.rose,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+  },
+  signInBtn: {
+    minWidth: 92,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
     backgroundColor: Colors.emerald,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.sm + 2,
-    paddingVertical: Spacing.xs + 2,
   },
   signInBtnText: {
-    fontSize: FontSize.xs,
+    fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
     color: Colors.bg,
   },

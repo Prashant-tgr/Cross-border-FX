@@ -522,6 +522,38 @@ export async function loginApi(email: string, password: string): Promise<AuthRes
   };
 }
 
+export async function requestPasswordResetApi(email: string): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Unable to request a password reset.');
+  }
+  return json.message;
+}
+
+export async function resetPasswordApi(payload: {
+  email: string;
+  otp: string;
+  password: string;
+}): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || 'Unable to reset your password.');
+  }
+  return json.message;
+}
+
 export async function registerApi(payload: {
   name: string;
   email: string;

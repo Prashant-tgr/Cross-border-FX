@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowRightLeft,
   TrendingDown,
@@ -45,6 +45,8 @@ import {
   updateAdminUserPlan,
   updateAdminRailConfig,
   createAdminCorridor,
+  requestPasswordResetApi,
+  resetPasswordApi,
   AuthResponse,
 } from '@/lib/api';
 import {
@@ -66,13 +68,18 @@ export default function DashboardPage() {
   // User & Auth States
   const [currentUser, setCurrentUser] = useState<AuthResponse['user'] | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password' | 'reset-password'>('login');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authName, setAuthName] = useState('');
   const [authCompanyName, setAuthCompanyName] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   // Router Form States
   const [sourceCurrency, setSourceCurrency] = useState('USD');
@@ -101,6 +108,26 @@ export default function DashboardPage() {
   const [newCorridorSource, setNewCorridorSource] = useState('USD');
   const [newCorridorTarget, setNewCorridorTarget] = useState('JPY');
   const [newCorridorMid, setNewCorridorMid] = useState(153.25);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (event.target instanceof Node && !profileMenuRef.current?.contains(event.target)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsProfileMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isProfileMenuOpen]);
 
   // Load initial session and market data
   useEffect(() => {
@@ -216,22 +243,47 @@ export default function DashboardPage() {
     e.preventDefault();
     setAuthLoading(true);
     setAuthError(null);
+    setAuthNotice(null);
 
     try {
+      if (authMode === 'forgot-password') {
+        const message = await requestPasswordResetApi(authEmail.trim());
+        setAuthMode('reset-password');
+        setAuthNotice(message);
+        return;
+      }
+
+      if (authMode === 'reset-password') {
+        const message = await resetPasswordApi({
+          email: authEmail.trim(),
+          otp: resetOtp.trim(),
+          password: newPassword,
+        });
+        setAuthMode('login');
+        setAuthPassword('');
+        setResetOtp('');
+        setNewPassword('');
+        setAuthNotice(message);
+        return;
+      }
+
       let res: AuthResponse;
       if (authMode === 'login') {
         res = await loginApi(authEmail, authPassword);
-      } else {
+      } else if (authMode === 'register') {
         res = await registerApi({
           name: authName,
           email: authEmail,
           password: authPassword,
           companyName: authCompanyName,
         });
+      } else {
+        throw new Error('Unsupported authentication mode.');
       }
 
       setCurrentUser(res.user);
       setIsAuthModalOpen(false);
+      setAuthNotice(null);
 
       const [supplierData, analyticsData] = await Promise.all([fetchSuppliers(), fetchAnalytics()]);
       setSuppliers(supplierData);
@@ -249,6 +301,7 @@ export default function DashboardPage() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setCurrentUser(null);
+    setIsProfileMenuOpen(false);
     if (activeTab === 'admin') {
       setActiveTab('router');
     }
@@ -380,15 +433,15 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Top Navigation Bar */}
       <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
               <ArrowRightLeft className="h-5 w-5 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-lg tracking-tight text-white">Cross-Border FX</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                <span className="font-bold text-base sm:text-lg tracking-tight text-white truncate">Cross-Border FX</span>
+                <span className="hidden sm:inline-flex text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium shrink-0">
                   Router v2.4
                 </span>
                 {currentUser?.role === 'admin' && (
@@ -397,11 +450,11 @@ export default function DashboardPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400">Multi-Rail Spread Tracking & Remittance Engine</p>
+              <p className="hidden sm:block text-xs text-slate-400 truncate">Multi-Rail Spread Tracking & Remittance Engine</p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 sm:space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
             <div className="hidden lg:flex items-center gap-2 bg-slate-800/80 border border-slate-700/60 rounded-lg px-3 py-1.5 text-xs">
               <span className="text-slate-400">Monetization:</span>
               <span className="text-cyan-400 font-semibold">$2,000/mo or 20 bps Profit Split</span>
@@ -409,36 +462,57 @@ export default function DashboardPage() {
 
             {/* User Profile / Login Toggle */}
             {currentUser ? (
-              <div className="flex items-center gap-3 border-l border-slate-800 pl-3 sm:pl-4">
-                <div
-                  className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold border ${
-                    currentUser.role === 'admin'
-                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                  }`}
-                >
-                  <UserIcon className="h-4 w-4" />
-                </div>
-                <div className="text-left hidden sm:block">
-                  <p className="text-xs font-medium text-slate-200">{currentUser.companyName || currentUser.name}</p>
-                  <p className="text-[10px] text-emerald-400 capitalize">{currentUser.role?.replace('_', ' ') || 'Treasury Manager'}</p>
-                </div>
+              <div className="relative border-l border-slate-800 pl-2 sm:pl-4" ref={profileMenuRef}>
                 <button
-                  onClick={handleLogout}
-                  title="Sign Out"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                  type="button"
+                  onClick={() => setIsProfileMenuOpen((open) => !open)}
+                  aria-label="Open profile"
+                  aria-expanded={isProfileMenuOpen}
+                  className="min-h-11 min-w-11 flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/70 px-2 sm:px-3 text-slate-300 hover:border-emerald-500/40 hover:text-white transition"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <span
+                    className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-semibold border ${
+                      currentUser.role === 'admin'
+                        ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                    }`}
+                  >
+                    <UserIcon className="h-4 w-4" />
+                  </span>
+                  <span className="hidden sm:inline text-xs font-medium">Profile</span>
                 </button>
+                {isProfileMenuOpen && (
+                  <div
+                    role="dialog"
+                    aria-label="Your profile"
+                    className="absolute right-0 top-full z-[60] mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow-2xl"
+                  >
+                    <div className="mb-3">
+                      <p className="text-sm font-semibold text-white">{currentUser.name}</p>
+                      <p className="mt-1 break-all text-xs text-slate-400">{currentUser.email}</p>
+                      {currentUser.companyName?.trim() && (
+                        <p className="mt-2 text-xs text-slate-300">{currentUser.companyName}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="min-h-11 w-full flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 text-sm font-medium text-rose-300 hover:bg-rose-500/20 transition"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign out
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="flex items-center gap-2 border-l border-slate-800 pl-3 sm:pl-4">
+              <div className="flex items-center gap-2 border-l border-slate-800 pl-2 sm:pl-4">
                 <span className="text-[11px] text-amber-400/90 hidden sm:inline-block bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
                   Guest Preview
                 </span>
                 <button
                   onClick={() => setIsAuthModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-semibold text-xs transition shadow-sm"
+                  className="min-h-11 min-w-24 flex items-center justify-center gap-1.5 px-3 sm:px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-semibold text-sm transition shadow-sm"
                 >
                   <LogIn className="h-3.5 w-3.5" />
                   Sign In
@@ -1485,10 +1559,20 @@ export default function DashboardPage() {
                 <Lock className="h-6 w-6" />
               </div>
               <h3 className="text-lg font-bold text-white">
-                {authMode === 'login' ? 'Corporate Treasury Login' : 'Register Treasury Account'}
+                {authMode === 'login'
+                  ? 'Corporate Treasury Login'
+                  : authMode === 'register'
+                    ? 'Register Treasury Account'
+                    : authMode === 'forgot-password'
+                      ? 'Reset your password'
+                      : 'Verify your email'}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Access locked quotes, audit reports & commercial remittance execution
+                {authMode === 'forgot-password'
+                  ? 'We’ll send a one-time verification code to your corporate email.'
+                  : authMode === 'reset-password'
+                    ? 'Enter the code from your email and choose a new password.'
+                    : 'Access locked quotes, audit reports & commercial remittance execution'}
               </p>
             </div>
 
@@ -1496,6 +1580,12 @@ export default function DashboardPage() {
               <div className="mb-4 p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
                 <span>{authError}</span>
+              </div>
+            )}
+            {authNotice && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-950/50 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                <span>{authNotice}</span>
               </div>
             )}
 
@@ -1536,47 +1626,118 @@ export default function DashboardPage() {
                     required
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
+                    readOnly={authMode === 'reset-password'}
                     placeholder="name@company.com"
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block font-medium text-slate-300 mb-1">Password</label>
-                <div className="relative">
-                  <Lock className="h-4 w-4 text-slate-500 absolute left-3 top-2.5" />
-                  <input
-                    type="password"
-                    required
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
+              {(authMode === 'login' || authMode === 'register') && (
+                <div>
+                  <label className="block font-medium text-slate-300 mb-1">Password</label>
+                  <div className="relative">
+                    <Lock className="h-4 w-4 text-slate-500 absolute left-3 top-2.5" />
+                    <input
+                      type="password"
+                      required
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  {authMode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('forgot-password');
+                        setAuthError(null);
+                        setAuthNotice(null);
+                      }}
+                      className="mt-2 text-xs text-emerald-400 hover:text-emerald-300 transition"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {authMode === 'reset-password' && (
+                <>
+                  <div>
+                    <label className="block font-medium text-slate-300 mb-1">Email verification code</label>
+                    <div className="relative">
+                      <Mail className="h-4 w-4 text-slate-500 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        required
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                        value={resetOtp}
+                        onChange={(e) => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="6-digit code"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block font-medium text-slate-300 mb-1">New password</label>
+                    <div className="relative">
+                      <Lock className="h-4 w-4 text-slate-500 absolute left-3 top-2.5" />
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="At least 6 characters"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               <button
                 type="submit"
                 disabled={authLoading}
                 className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-semibold text-slate-950 text-xs transition shadow-lg shadow-emerald-500/20 disabled:opacity-50"
               >
-                {authLoading ? 'Verifying...' : authMode === 'login' ? 'Sign In to Treasury' : 'Create Account'}
+                {authLoading
+                  ? 'Please wait...'
+                  : authMode === 'login'
+                    ? 'Sign In to Treasury'
+                    : authMode === 'register'
+                      ? 'Create Account'
+                      : authMode === 'forgot-password'
+                        ? 'Send verification code'
+                        : 'Reset password'}
               </button>
 
               <div className="text-center pt-2">
                 <button
                   type="button"
                   onClick={() => {
-                    setAuthMode(authMode === 'login' ? 'register' : 'login');
+                    setAuthMode(
+                      authMode === 'login'
+                        ? 'register'
+                        : authMode === 'register'
+                          ? 'login'
+                          : 'login'
+                    );
                     setAuthError(null);
+                    setAuthNotice(null);
                   }}
                   className="text-xs text-slate-400 hover:text-emerald-400 transition"
                 >
                   {authMode === 'login'
                     ? "Don't have an enterprise account? Register"
-                    : 'Already registered? Sign in'}
+                    : authMode === 'register'
+                      ? 'Already registered? Sign in'
+                      : 'Back to sign in'}
                 </button>
               </div>
             </form>
