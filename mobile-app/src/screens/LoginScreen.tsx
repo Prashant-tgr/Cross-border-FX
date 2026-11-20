@@ -8,7 +8,7 @@
 //   - lucide-react icons → Ionicons (@expo/vector-icons)
 //   - Navigation: replace modal close → navigation.replace('(tabs)')
 // ─────────────────────────────────────────────────────────────────
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '../constants/theme';
 import { requestPasswordResetApi, resetPasswordApi } from '../lib/api';
+
+const RESEND_CODE_COOLDOWN_SECONDS = 60;
 
 type Mode = 'login' | 'register' | 'forgot-password' | 'reset-password';
 
@@ -45,8 +47,21 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
   const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const [isResendingCode, setIsResendingCode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (resendCountdown === 0) return;
+
+    const timer = setTimeout(() => {
+      setResendCountdown((seconds) => seconds - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [resendCountdown]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -90,11 +105,29 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
     try {
       const message = await requestPasswordResetApi(email.trim());
       setMode('reset-password');
+      setResendCountdown(RESEND_CODE_COOLDOWN_SECONDS);
       setNotice(message);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unable to request a password reset.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (loading || isResendingCode || resendCountdown > 0) return;
+
+    setError(null);
+    setNotice(null);
+    setIsResendingCode(true);
+    try {
+      const message = await requestPasswordResetApi(email.trim());
+      setNotice(message);
+      setResendCountdown(RESEND_CODE_COOLDOWN_SECONDS);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unable to resend the verification code.');
+    } finally {
+      setIsResendingCode(false);
     }
   };
 
@@ -113,6 +146,7 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
       setPassword('');
       setOtp('');
       setNewPassword('');
+      setShowNewPassword(false);
       setNotice(message);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unable to reset your password.');
@@ -262,7 +296,12 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
                     returnKeyType="done"
                     onSubmitEditing={handleSubmit}
                   />
-                  <Pressable onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                    onPress={() => setShowPassword((visible) => !visible)}
+                    style={styles.eyeBtn}
+                  >
                     <Ionicons
                       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                       size={18}
@@ -300,23 +339,57 @@ export default function LoginScreen({ onSuccess, onClose, onContinueAsGuest }: L
                     returnKeyType="next"
                   />
                 </View>
+                <Text style={styles.helperText}>
+                  If you don’t see the code, check your Spam, Junk, or Promotions folder.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: loading || isResendingCode || resendCountdown > 0 }}
+                  onPress={handleResendCode}
+                  disabled={loading || isResendingCode || resendCountdown > 0}
+                  style={({ pressed }) => [
+                    styles.resendBtn,
+                    pressed && styles.pressed,
+                    (loading || isResendingCode || resendCountdown > 0) && styles.disabled,
+                  ]}
+                >
+                  <Text style={styles.resendText}>
+                    {isResendingCode
+                      ? 'Sending...'
+                      : resendCountdown > 0
+                        ? `Resend code in ${resendCountdown}s`
+                        : 'Resend code'}
+                  </Text>
+                </Pressable>
               </View>
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>New password</Text>
                 <View style={styles.inputWrap}>
                   <Ionicons name="lock-closed-outline" size={16} color={Colors.textDim} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, styles.inputPassword]}
                     value={newPassword}
                     onChangeText={setNewPassword}
                     placeholder="At least 6 characters"
                     placeholderTextColor={Colors.textDim}
-                    secureTextEntry
+                    secureTextEntry={!showNewPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
                     returnKeyType="done"
                     onSubmitEditing={handleResetPassword}
                   />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={showNewPassword ? 'Hide new password' : 'Show new password'}
+                    onPress={() => setShowNewPassword((visible) => !visible)}
+                    style={styles.eyeBtn}
+                  >
+                    <Ionicons
+                      name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={Colors.textMuted}
+                    />
+                  </Pressable>
                 </View>
               </View>
             </>
@@ -494,6 +567,9 @@ const styles = StyleSheet.create({
   noticeText: { flex: 1, fontSize: FontSize.sm, color: Colors.emeraldLight },
   forgotBtn: { alignSelf: 'flex-end', marginTop: -Spacing.sm, marginBottom: Spacing.sm, paddingVertical: Spacing.xs },
   forgotText: { fontSize: FontSize.sm, color: Colors.emeraldLight, fontWeight: FontWeight.semibold },
+  helperText: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: Spacing.xs },
+  resendBtn: { alignSelf: 'flex-start', paddingVertical: Spacing.xs, marginTop: Spacing.xs },
+  resendText: { fontSize: FontSize.sm, color: Colors.emeraldLight, fontWeight: FontWeight.semibold },
 
   // Fields
   fieldGroup: { marginBottom: Spacing.md },

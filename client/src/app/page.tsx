@@ -20,6 +20,8 @@ import {
   User as UserIcon,
   Lock,
   Mail,
+  Eye,
+  EyeOff,
   X,
   AlertCircle,
   Sliders,
@@ -59,6 +61,8 @@ import {
   AdminUser,
 } from '@/types/fx';
 
+const RESEND_CODE_COOLDOWN_SECONDS = 60;
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'router' | 'spreads' | 'suppliers' | 'analytics' | 'admin'>('router');
   const [corridors, setCorridors] = useState<RateFeedCorridor[]>([]);
@@ -80,6 +84,10 @@ export default function DashboardPage() {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [resetOtp, setResetOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const [isResendingCode, setIsResendingCode] = useState(false);
 
   // Router Form States
   const [sourceCurrency, setSourceCurrency] = useState('USD');
@@ -96,6 +104,16 @@ export default function DashboardPage() {
   const [quoteCountdown, setQuoteCountdown] = useState<number>(120);
   const [isFetchingQuote, setIsFetchingQuote] = useState(false);
   const [quoteRefreshNotice, setQuoteRefreshNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (resendCountdown === 0) return;
+
+    const timer = window.setTimeout(() => {
+      setResendCountdown((seconds) => seconds - 1);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [resendCountdown]);
 
   // Admin Panel States
   const [adminOverview, setAdminOverview] = useState<AdminOverview | null>(null);
@@ -249,6 +267,7 @@ export default function DashboardPage() {
       if (authMode === 'forgot-password') {
         const message = await requestPasswordResetApi(authEmail.trim());
         setAuthMode('reset-password');
+        setResendCountdown(RESEND_CODE_COOLDOWN_SECONDS);
         setAuthNotice(message);
         return;
       }
@@ -263,6 +282,7 @@ export default function DashboardPage() {
         setAuthPassword('');
         setResetOtp('');
         setNewPassword('');
+        setShowNewPassword(false);
         setAuthNotice(message);
         return;
       }
@@ -295,6 +315,23 @@ export default function DashboardPage() {
       setAuthError(err.message || 'Authentication failed');
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (authLoading || isResendingCode || resendCountdown > 0) return;
+
+    setIsResendingCode(true);
+    setAuthError(null);
+    setAuthNotice(null);
+    try {
+      const message = await requestPasswordResetApi(authEmail.trim());
+      setAuthNotice(message);
+      setResendCountdown(RESEND_CODE_COOLDOWN_SECONDS);
+    } catch (err: unknown) {
+      setAuthError(err instanceof Error ? err.message : 'Unable to resend the verification code.');
+    } finally {
+      setIsResendingCode(false);
     }
   };
 
@@ -1639,13 +1676,21 @@ export default function DashboardPage() {
                   <div className="relative">
                     <Lock className="h-4 w-4 text-slate-500 absolute left-3 top-2.5" />
                     <input
-                      type="password"
+                      type={showAuthPassword ? 'text' : 'password'}
                       required
                       value={authPassword}
                       onChange={(e) => setAuthPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-10 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowAuthPassword((visible) => !visible)}
+                      aria-label={showAuthPassword ? 'Hide password' : 'Show password'}
+                      className="absolute right-3 top-2 text-slate-500 hover:text-slate-300"
+                    >
+                      {showAuthPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                   {authMode === 'login' && (
                     <button
@@ -1682,20 +1727,43 @@ export default function DashboardPage() {
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
+                    <p className="mt-2 text-[11px] text-slate-400">
+                      If you don’t see the code, check your Spam, Junk, or Promotions folder.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleResendCode}
+                      disabled={authLoading || isResendingCode || resendCountdown > 0}
+                      className="mt-2 text-xs font-medium text-emerald-400 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isResendingCode
+                        ? 'Sending...'
+                        : resendCountdown > 0
+                          ? `Resend code in ${resendCountdown}s`
+                          : 'Resend code'}
+                    </button>
                   </div>
                   <div>
                     <label className="block font-medium text-slate-300 mb-1">New password</label>
                     <div className="relative">
                       <Lock className="h-4 w-4 text-slate-500 absolute left-3 top-2.5" />
                       <input
-                        type="password"
+                        type={showNewPassword ? 'text' : 'password'}
                         required
                         minLength={6}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="At least 6 characters"
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-10 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword((visible) => !visible)}
+                        aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+                        className="absolute right-3 top-2 text-slate-500 hover:text-slate-300"
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
                 </>
