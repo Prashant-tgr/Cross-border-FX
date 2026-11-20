@@ -19,6 +19,10 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: "Cross-Border FX <no-reply@crossboundary.online>"
 
   # Frontend Next.js Client
   - type: web

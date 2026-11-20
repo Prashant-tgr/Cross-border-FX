@@ -1,37 +1,32 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { AppError } from '../middleware/error.js';
 
-const getSmtpConfig = () => {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
-  const port = Number(SMTP_PORT);
+const getResendConfig = () => {
+  const { RESEND_API_KEY, RESEND_FROM } = process.env;
 
-  if (!SMTP_HOST || !Number.isInteger(port) || port <= 0 || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
+  if (!RESEND_API_KEY?.trim() || !RESEND_FROM?.trim()) {
     throw new AppError('Email OTP delivery is not configured.', 503);
   }
 
-  return { host: SMTP_HOST, port, user: SMTP_USER, password: SMTP_PASS, from: SMTP_FROM };
+  return { apiKey: RESEND_API_KEY.trim(), from: RESEND_FROM.trim() };
 };
 
 export const assertEmailDeliveryConfigured = () => {
-  getSmtpConfig();
+  getResendConfig();
 };
 
 export const sendPasswordResetEmail = async (email, otp) => {
-  const config = getSmtpConfig();
-  const transporter = nodemailer.createTransport({
-    host: config.host,
-    port: config.port,
-    secure: config.port === 465,
-    auth: { user: config.user, pass: config.password },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
+  const config = getResendConfig();
+  const resend = new Resend(config.apiKey);
 
-  await transporter.sendMail({
+  const { error } = await resend.emails.send({
     from: config.from,
     to: email,
     subject: 'Your Cross-Border FX password reset code',
     text: `Your password reset code is ${otp}. It expires in 10 minutes. If you did not request this, you can ignore this email.`,
   });
+
+  if (error) {
+    throw new Error(`Resend API email delivery failed: ${error.message}`);
+  }
 };

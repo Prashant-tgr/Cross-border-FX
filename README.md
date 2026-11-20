@@ -94,7 +94,7 @@ Backend runs at: `http://localhost:5000`
 Health check: `http://localhost:5000/api/health`
 
 #### Password reset email
-Password recovery sends a 6-digit email OTP that expires after 10 minutes. Configure `PASSWORD_RESET_SECRET` and the `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` values from `server/.env.example` in the server environment before using the reset flow.
+Password recovery sends a 6-digit email OTP that expires after 10 minutes. Configure `PASSWORD_RESET_SECRET`, `RESEND_API_KEY`, and `RESEND_FROM` from `server/.env.example` in the server environment before using the reset flow. The sender address must use a domain verified with Resend.
 
 ### 3. Frontend Setup
 ```bash
