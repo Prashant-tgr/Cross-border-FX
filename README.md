@@ -119,3 +119,7 @@ Frontend runs at: `http://localhost:3000`
 ## 💰 Monetization Model
 - **\$2,000/month Flat Retainer**: Ideal for high-frequency enterprise corporate treasuries.
 - **Basis Point (bps) Profit Split**: Platform retains 20% of net savings realized compared to the high-street commercial bank benchmark.
+
+# Initial Super Admin Credentials
+INITIAL_ADMIN_EMAIL=admin@globaltrade.io
+INITIAL_ADMIN_PASSWORD=Password123!
